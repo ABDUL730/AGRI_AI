@@ -42,8 +42,10 @@ const PublicRoute = ({ component: Component, ...rest }: any) => {
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/">
+      <Route path="/login">
+        {() => <PublicRoute component={Login} />}
+      </Route>
+      <Route path="/" exact>
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
       <Route path="/crop-management">
@@ -61,7 +63,7 @@ function Router() {
       <Route path="/assistant">
         {() => <ProtectedRoute component={Assistant} />}
       </Route>
-      <Route>
+      <Route path="/:rest*">
         {() => <PublicRoute component={NotFound} />}
       </Route>
     </Switch>
