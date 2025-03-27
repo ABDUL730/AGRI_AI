@@ -1,0 +1,61 @@
+import { useState, useContext, createContext, ReactNode } from 'react';
+
+type Language = 'english' | 'hindi' | 'tamil' | 'telugu' | 'kannada';
+
+type LanguageContextType = {
+  language: Language;
+  setLanguage: (language: Language) => void; 
+  t: (key: string) => string;
+};
+
+const translations = {
+  english: {
+    "Dashboard": "Dashboard",
+    "Crop Management": "Crop Management"
+  },
+  hindi: {
+    "Dashboard": "डैशबोर्ड",
+    "Crop Management": "फसल प्रबंधन"
+  },
+  tamil: {
+    "Dashboard": "டாஷ்போர்டு",
+    "Crop Management": "பயிர் மேலாண்மை"
+  },
+  telugu: {
+    "Dashboard": "డాష్‌బోర్డ్",
+    "Crop Management": "పంట నిర్వహణ"
+  },
+  kannada: {
+    "Dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "Crop Management": "ಬೆಳೆ ನಿರ್ವಹಣೆ"
+  }
+};
+
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'english',
+  setLanguage: () => {},
+  t: (key) => key
+});
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguage] = useState<Language>('english');
+  
+  const t = (key: string): string => {
+    if (language && translations[language] && translations[language][key]) {
+      return translations[language][key];
+    }
+    return key;
+  };
+  
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  return useContext(LanguageContext);
+}
+
+export default useLanguage;

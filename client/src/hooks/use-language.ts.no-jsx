@@ -1,0 +1,77 @@
+import { useState, createContext, useContext, ReactNode } from 'react';
+
+// Available languages
+type Language = 'english' | 'hindi' | 'tamil' | 'telugu' | 'kannada';
+
+// Language context type
+type LanguageContextType = {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (key: string) => string;
+};
+
+// Simplified translations
+const translations = {
+  english: {
+    "Dashboard": "Dashboard",
+    "Crop Management": "Crop Management"
+  },
+  hindi: {
+    "Dashboard": "डैशबोर्ड",
+    "Crop Management": "फसल प्रबंधन"
+  },
+  tamil: {
+    "Dashboard": "டாஷ்போர்டு",
+    "Crop Management": "பயிர் மேலாண்மை"
+  },
+  telugu: {
+    "Dashboard": "డాష్‌బోర్డ్",
+    "Crop Management": "పంట నిర్వహణ"
+  },
+  kannada: {
+    "Dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "Crop Management": "ಬೆಳೆ ನಿರ್ವಹಣೆ"
+  }
+};
+
+// Create default context
+const defaultContext: LanguageContextType = {
+  language: 'english',
+  setLanguage: () => {},
+  t: (key) => key
+};
+
+// Create context
+const LanguageContext = createContext<LanguageContextType>(defaultContext);
+
+// Provider component
+export const LanguageProvider = (props: { children: ReactNode }) => {
+  const [language, setLanguage] = useState<Language>('english');
+  
+  const translate = (key: string): string => {
+    if (translations[language] && translations[language][key]) {
+      return translations[language][key];
+    }
+    return key;
+  };
+  
+  const value = {
+    language,
+    setLanguage,
+    t: translate
+  };
+  
+  // Using createElement instead of JSX
+  return (
+    LanguageContext.Provider,
+    { value },
+    props.children
+  );
+};
+
+// Hook for using the language context
+export const useLanguage = (): LanguageContextType => {
+  return useContext(LanguageContext);
+};
+
+export default useLanguage;
