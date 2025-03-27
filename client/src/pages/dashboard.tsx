@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { t } = useLanguage();
-  const [location] = useState("Nagpur, Maharashtra");
+  const [location] = useState("Anantapur, AP");
 
   return (
     <MainLayout>
