@@ -3,8 +3,6 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -99,8 +97,6 @@ export default function Login() {
   // Use authentication hook
   const { login, register: registerUser, isLoading: isAuthLoading } = useAuth();
 
-  // No longer need the register mutation as we're using the auth hook
-
   // Handle login form submission
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
@@ -153,96 +149,39 @@ export default function Login() {
         </div>
 
         <Card className="w-full">
-          <CardHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <CardHeader>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">{t("Login")}</TabsTrigger>
                 <TabsTrigger value="register">{t("Register")}</TabsTrigger>
               </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent>
-            <TabsContent value="login" className="mt-0">
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("Username")}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder={t("Enter your username")} 
-                              className="pl-10" 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("Password")}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="password" 
-                              placeholder={t("Enter your password")} 
-                              className="pl-10" 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full mt-6" 
-                    disabled={isAuthLoading}
-                  >
-                    {isAuthLoading ? t("Logging in...") : t("Login")}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-
-            <TabsContent value="register" className="mt-0">
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                  <FormField
-                    control={registerForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("Username")}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder={t("Choose a username")} 
-                              className="pl-10" 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </CardHeader>
+            <CardContent>
+              <TabsContent value="login" className="mt-0">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                     <FormField
-                      control={registerForm.control}
+                      control={loginForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("Username")}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                placeholder={t("Enter your username")} 
+                                className="pl-10" 
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loginForm.control}
                       name="password"
                       render={({ field }) => (
                         <FormItem>
@@ -252,7 +191,7 @@ export default function Login() {
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                               <Input 
                                 type="password" 
-                                placeholder={t("Create a password")} 
+                                placeholder={t("Enter your password")} 
                                 className="pl-10" 
                                 {...field} 
                               />
@@ -262,18 +201,31 @@ export default function Login() {
                         </FormItem>
                       )}
                     />
+                    <Button 
+                      type="submit" 
+                      className="w-full mt-6" 
+                      disabled={isAuthLoading}
+                    >
+                      {isAuthLoading ? t("Logging in...") : t("Login")}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="register" className="mt-0">
+                <Form {...registerForm}>
+                  <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                     <FormField
                       control={registerForm.control}
-                      name="confirmPassword"
+                      name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("Confirm Password")}</FormLabel>
+                          <FormLabel>{t("Username")}</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                type="password" 
-                                placeholder={t("Confirm password")} 
+                                placeholder={t("Choose a username")} 
                                 className="pl-10" 
                                 {...field} 
                               />
@@ -283,157 +235,201 @@ export default function Login() {
                         </FormItem>
                       )}
                     />
-                  </div>
-                  <FormField
-                    control={registerForm.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("Full Name")}</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder={t("Enter your full name")} 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("Password")}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  type="password" 
+                                  placeholder={t("Create a password")} 
+                                  className="pl-10" 
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("Confirm Password")}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  type="password" 
+                                  placeholder={t("Confirm password")} 
+                                  className="pl-10" 
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     <FormField
                       control={registerForm.control}
-                      name="location"
+                      name="fullName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("Location")}</FormLabel>
+                          <FormLabel>{t("Full Name")}</FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                placeholder={t("Village/District")} 
-                                className="pl-10" 
-                                {...field} 
-                              />
-                            </div>
+                            <Input 
+                              placeholder={t("Enter your full name")} 
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={registerForm.control}
+                        name="location"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("Location")}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  placeholder={t("Village/District")} 
+                                  className="pl-10" 
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("Phone Number")}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  placeholder={t("Mobile number")} 
+                                  className="pl-10" 
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     <FormField
                       control={registerForm.control}
-                      name="phoneNumber"
+                      name="preferredLanguage"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("Phone Number")}</FormLabel>
+                          <FormLabel>{t("Preferred Language")}</FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                placeholder={t("Mobile number")} 
-                                className="pl-10" 
-                                {...field} 
-                              />
-                            </div>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-wrap gap-4"
+                            >
+                              <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="english" />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
+                                  English
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="hindi" />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
+                                  हिंदी (Hindi)
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="tamil" />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
+                                  தமிழ் (Tamil)
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="telugu" />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
+                                  తెలుగు (Telugu)
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="kannada" />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
+                                  ಕನ್ನಡ (Kannada)
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
-                  <FormField
-                    control={registerForm.control}
-                    name="preferredLanguage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("Preferred Language")}</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex flex-wrap gap-4"
-                          >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="english" />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
-                                English
-                              </FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="hindi" />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
-                                हिंदी (Hindi)
-                              </FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="tamil" />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
-                                தமிழ் (Tamil)
-                              </FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="telugu" />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
-                                తెలుగు (Telugu)
-                              </FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="kannada" />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
-                                ಕನ್ನಡ (Kannada)
-                              </FormLabel>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full mt-6" 
-                    disabled={isAuthLoading}
+                    <Button 
+                      type="submit" 
+                      className="w-full mt-6" 
+                      disabled={isAuthLoading}
+                    >
+                      {isAuthLoading ? t("Creating account...") : t("Create Account")}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+            </CardContent>
+            <CardFooter className="flex justify-center text-sm text-muted-foreground">
+              {activeTab === "login" ? (
+                <p>{t("Don't have an account?")}{" "}
+                  <button 
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setActiveTab("register")}
                   >
-                    {isAuthLoading ? t("Creating account...") : t("Create Account")}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-          </CardContent>
-          <CardFooter className="flex justify-center text-sm text-muted-foreground">
-            {activeTab === "login" ? (
-              <p>{t("Don't have an account?")}{" "}
-                <button 
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => setActiveTab("register")}
-                >
-                  {t("Register here")}
-                </button>
-              </p>
-            ) : (
-              <p>{t("Already have an account?")}{" "}
-                <button 
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => setActiveTab("login")}
-                >
-                  {t("Login here")}
-                </button>
-              </p>
-            )}
-          </CardFooter>
+                    {t("Register here")}
+                  </button>
+                </p>
+              ) : (
+                <p>{t("Already have an account?")}{" "}
+                  <button 
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    {t("Login here")}
+                  </button>
+                </p>
+              )}
+            </CardFooter>
+          </Tabs>
         </Card>
       </div>
     </div>
