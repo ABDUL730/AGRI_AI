@@ -31,6 +31,11 @@ export async function logoutUser(): Promise<void> {
   await apiRequest("POST", "/api/auth/logout", {});
 }
 
+export async function getCurrentUser(): Promise<Farmer> {
+  const response = await apiRequest("GET", "/api/auth/check", undefined);
+  return response.json();
+}
+
 // Fields API
 export async function getFields(): Promise<Field[]> {
   const response = await apiRequest("GET", "/api/fields", undefined);

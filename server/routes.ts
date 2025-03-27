@@ -87,6 +87,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Check if user is authenticated
+  app.get('/api/auth/check', async (req: Request, res: Response) => {
+    try {
+      if (req.session && req.session.farmerId) {
+        const farmer = await storage.getFarmer(req.session.farmerId as number);
+        
+        if (farmer) {
+          // Return farmer data without the password
+          const { password, ...farmerData } = farmer;
+          return res.status(200).json(farmerData);
+        }
+      }
+      
+      return res.status(401).json({ message: "Not authenticated" });
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
   // Middleware to check if user is authenticated
   const isAuthenticated = (req: Request, res: Response, next: () => void) => {
     if (!req.session.farmerId) {
