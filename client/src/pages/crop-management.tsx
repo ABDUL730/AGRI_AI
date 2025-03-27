@@ -1,25 +1,72 @@
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from "react";
+import { Field } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
+import { FieldList } from "@/components/crop-management/field-list";
+import { AddFieldForm } from "@/components/crop-management/add-field-form";
+import { FieldDetail } from "@/components/crop-management/field-detail";
+import { CropRecommendationsTable } from "@/components/crop-management/crop-recommendations-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CropManagement() {
   const { t } = useLanguage();
+  const [isAddFieldOpen, setIsAddFieldOpen] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState<number | null>(null);
+  const [isFieldDetailOpen, setIsFieldDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("fields");
+
+  const handleAddField = () => {
+    setIsAddFieldOpen(true);
+  };
+
+  const handleCloseAddField = () => {
+    setIsAddFieldOpen(false);
+  };
+
+  const handleViewField = (field: Field) => {
+    setSelectedFieldId(field.id);
+    setIsFieldDetailOpen(true);
+  };
+
+  const handleCloseFieldDetail = () => {
+    setIsFieldDetailOpen(false);
+  };
 
   return (
-    <MainLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-heading font-bold text-gray-900">{t("Crop Management")}</h1>
-        <p className="mt-1 text-sm text-gray-600">{t("Manage your crops and get recommendations")}</p>
+    <div className="container py-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{t("Crop Management")}</h1>
+        <p className="text-muted-foreground">{t("Manage your fields and crop information")}</p>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="fields">{t("My Fields")}</TabsTrigger>
+          <TabsTrigger value="recommendations">{t("Crop Recommendations")}</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="fields" className="mt-6">
+          <FieldList
+            onAddField={handleAddField}
+            onViewField={handleViewField}
+          />
+        </TabsContent>
+        
+        <TabsContent value="recommendations" className="mt-6">
+          <CropRecommendationsTable />
+        </TabsContent>
+      </Tabs>
       
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <span className="material-icons text-primary text-4xl">grass</span>
-            <h2 className="mt-2 text-lg font-medium text-gray-900">{t("Crop Management Coming Soon")}</h2>
-            <p className="mt-1 text-gray-500">{t("This feature is under development and will be available soon.")}</p>
-          </div>
-        </div>
-      </div>
-    </MainLayout>
+      {/* Dialogs */}
+      <AddFieldForm 
+        isOpen={isAddFieldOpen} 
+        onClose={handleCloseAddField} 
+      />
+      
+      <FieldDetail 
+        fieldId={selectedFieldId} 
+        isOpen={isFieldDetailOpen} 
+        onClose={handleCloseFieldDetail} 
+      />
+    </div>
   );
 }
