@@ -315,13 +315,6 @@ async function seedDatabase() {
 }
 
 // Execute seeding function
-if (require.main === module) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Seeding failed:', error);
-      process.exit(1);
-    });
-}
+// This will be imported from server/index.ts, no need to auto-execute
 
 export { seedDatabase };

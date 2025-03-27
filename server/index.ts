@@ -6,7 +6,9 @@ import { setupVite, serveStatic, log } from "./vite";
 import { checkDatabaseConnection } from "./db/index";
 import { seedDatabase } from "./db/seed";
 import connectPgSimple from "connect-pg-simple";
-import { Pool } from "pg";
+import pg from "pg";
+
+const { Pool } = pg;
 
 const app = express();
 app.use(express.json());

@@ -1,8 +1,10 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 import * as schema from '../../shared/schema';
 
-const { Pool } = pg;
+// Configure neon to use WebSockets
+neonConfig.webSocketConstructor = ws;
 
 // Use DATABASE_URL environment variable if available
 let connectionString = process.env.DATABASE_URL;
@@ -17,11 +19,13 @@ if (!connectionString) {
 }
 
 // Create connection pool if connection string is available
-let pool: typeof Pool.prototype | null = null;
-if (connectionString) {
-  pool = new Pool({
-    connectionString,
-  });
+let pool: Pool | null = null;
+try {
+  if (connectionString) {
+    pool = new Pool({ connectionString });
+  }
+} catch (error) {
+  console.error('Failed to create database pool:', error);
 }
 
 // Export the database instance
