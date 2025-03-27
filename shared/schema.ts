@@ -2,6 +2,46 @@ import { pgTable, text, serial, integer, boolean, timestamp, json, real } from "
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Define the Storage Interface
+export interface IStorage {
+  // Farmer operations
+  getFarmer(id: number): Promise<Farmer | undefined>;
+  getFarmerByUsername(username: string): Promise<Farmer | undefined>;
+  createFarmer(farmer: InsertFarmer): Promise<Farmer>;
+  updateFarmer(id: number, farmer: Partial<Farmer>): Promise<Farmer | undefined>;
+  
+  // Field operations
+  getField(id: number): Promise<Field | undefined>;
+  getFieldsByFarmerId(farmerId: number): Promise<Field[]>;
+  createField(field: InsertField): Promise<Field>;
+  updateField(id: number, field: Partial<Field>): Promise<Field | undefined>;
+  
+  // Weather operations
+  getWeatherByLocation(location: string): Promise<WeatherData | undefined>;
+  createWeatherData(weatherData: InsertWeatherData): Promise<WeatherData>;
+  
+  // Crop recommendation operations
+  getCropRecommendations(farmerId: number): Promise<CropRecommendation[]>;
+  createCropRecommendation(recommendation: InsertCropRecommendation): Promise<CropRecommendation>;
+  
+  // Financial assistance operations
+  getFinancialAssistance(): Promise<FinancialAssistance[]>;
+  createFinancialAssistance(assistance: InsertFinancialAssistance): Promise<FinancialAssistance>;
+  
+  // Market data operations
+  getMarketData(): Promise<MarketData[]>;
+  createMarketData(marketData: InsertMarketData): Promise<MarketData>;
+  
+  // Chat message operations
+  getChatMessagesByFarmerId(farmerId: number): Promise<ChatMessage[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  
+  // Notification operations
+  getNotifications(): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+}
+
 // User/Farmer Schema
 export const farmers = pgTable("farmers", {
   id: serial("id").primaryKey(),

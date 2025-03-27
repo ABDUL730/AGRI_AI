@@ -433,4 +433,60 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import the PostgreSQL storage implementation
+import { PostgresStorage } from './db/storage';
+import { checkDatabaseConnection } from './db/index';
+
+// Create both storage options
+const memStorage = new MemStorage();
+const pgStorage = new PostgresStorage();
+
+// Determine which storage to use based on database availability
+let activeStorage: IStorage = memStorage;
+
+// Try to use PostgreSQL storage if database is available
+(async function initializeStorage() {
+  try {
+    const dbStatus = await checkDatabaseConnection();
+    if (dbStatus.success) {
+      console.log('Using PostgreSQL storage');
+      activeStorage = pgStorage;
+    } else {
+      console.log('Database connection failed, using in-memory storage');
+    }
+  } catch (error) {
+    console.error('Storage initialization error, using in-memory storage', error);
+  }
+})();
+
+export const storage: IStorage = {
+  // Proxy that forwards calls to the active storage implementation
+  getFarmer: (...args) => activeStorage.getFarmer(...args),
+  getFarmerByUsername: (...args) => activeStorage.getFarmerByUsername(...args),
+  createFarmer: (...args) => activeStorage.createFarmer(...args),
+  updateFarmer: (...args) => activeStorage.updateFarmer(...args),
+  
+  getField: (...args) => activeStorage.getField(...args),
+  getFieldsByFarmerId: (...args) => activeStorage.getFieldsByFarmerId(...args),
+  createField: (...args) => activeStorage.createField(...args),
+  updateField: (...args) => activeStorage.updateField(...args),
+  
+  getWeatherByLocation: (...args) => activeStorage.getWeatherByLocation(...args),
+  createWeatherData: (...args) => activeStorage.createWeatherData(...args),
+  
+  getCropRecommendations: (...args) => activeStorage.getCropRecommendations(...args),
+  createCropRecommendation: (...args) => activeStorage.createCropRecommendation(...args),
+  
+  getFinancialAssistance: (...args) => activeStorage.getFinancialAssistance(...args),
+  createFinancialAssistance: (...args) => activeStorage.createFinancialAssistance(...args),
+  
+  getMarketData: (...args) => activeStorage.getMarketData(...args),
+  createMarketData: (...args) => activeStorage.createMarketData(...args),
+  
+  getChatMessagesByFarmerId: (...args) => activeStorage.getChatMessagesByFarmerId(...args),
+  createChatMessage: (...args) => activeStorage.createChatMessage(...args),
+  
+  getNotifications: (...args) => activeStorage.getNotifications(...args),
+  createNotification: (...args) => activeStorage.createNotification(...args),
+  markNotificationAsRead: (...args) => activeStorage.markNotificationAsRead(...args),
+};
