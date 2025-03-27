@@ -8,6 +8,7 @@ import {
   insertChatMessageSchema,
   insertCropRecommendationSchema
 } from "@shared/schema";
+import { getAIChatResponse, getCropRecommendations, getSubsidyRecommendations } from "./services/openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix
@@ -255,43 +256,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save user message
       const userMessage = await storage.createChatMessage(validationResult.data);
       
-      // Generate AI response based on user message
-      // This is a simplified version - in a real app, you would integrate with an AI service
-      let aiResponse = "I'm sorry, I don't understand. Could you please rephrase?";
-      
-      const userMessageLower = userMessage.message.toLowerCase();
-      
-      if (userMessageLower.includes("weather")) {
-        aiResponse = "Based on the current forecast for your location, expect partly cloudy conditions with a chance of light rain in the next 48 hours.";
-      } else if (userMessageLower.includes("crop") || userMessageLower.includes("plant")) {
-        aiResponse = "For your soil type and current climate conditions, soybean would be an excellent choice with high market demand.";
-      } else if (userMessageLower.includes("pest") || userMessageLower.includes("disease")) {
-        aiResponse = "Based on the current humidity levels, there's a risk of fungal diseases. Consider preventive fungicide application if you observe any symptoms.";
-      } else if (userMessageLower.includes("loan") || userMessageLower.includes("credit") || userMessageLower.includes("financial")) {
-        aiResponse = "You're eligible for the Kisan Credit Card with up to ₹3,00,000 at 4% interest rate. Would you like to apply?";
-      } else if (userMessageLower.includes("market") || userMessageLower.includes("price")) {
-        aiResponse = "The current e-NAM price for wheat is ₹2,200/quintal, which is 9.2% above MSP. Market demand is trending upward.";
-      } else if (userMessageLower.includes("harvest") || userMessageLower.includes("harvesting")) {
-        aiResponse = "Based on your crop's current growth stage, optimal harvesting time would be in 30-35 days. I'll send you updates as we get closer.";
-      } else if (userMessageLower.includes("water") || userMessageLower.includes("irrigation")) {
-        aiResponse = "Your soil moisture sensors indicate adequate levels. No irrigation needed for the next 3-4 days, but monitor closely as temperatures are rising.";
-      } else if (userMessageLower.includes("hello") || userMessageLower.includes("hi") || userMessageLower.includes("hey")) {
-        aiResponse = "Hello! How can I assist with your farming operations today?";
+      try {
+        // Get AI response from OpenAI
+        const previousMessages = await storage.getChatMessagesByFarmerId(farmerId);
+        const lastFiveMessages = previousMessages
+          .slice(-5)
+          .map(msg => ({
+            role: msg.sender === "user" ? "user" as const : "assistant" as const,
+            content: msg.message
+          }));
+        
+        // Add current message
+        lastFiveMessages.push({
+          role: "user",
+          content: userMessage.message
+        });
+        
+        // Get AI response using OpenAI
+        const aiResponseText = await getAIChatResponse(lastFiveMessages, farmerId);
+        
+        // Save AI response
+        const aiMessageData = {
+          farmerId,
+          sender: "ai",
+          message: aiResponseText
+        };
+        
+        const aiMessage = await storage.createChatMessage(aiMessageData);
+        
+        return res.status(201).json([userMessage, aiMessage]);
+      } catch (aiError) {
+        console.error("Error getting AI response:", aiError);
+        
+        // Fallback to basic response if AI service fails
+        const aiMessageData = {
+          farmerId,
+          sender: "ai",
+          message: "I'm sorry, I'm having trouble processing your request right now. Please try again later."
+        };
+        
+        const aiMessage = await storage.createChatMessage(aiMessageData);
+        return res.status(201).json([userMessage, aiMessage]);
       }
-      
-      // Save AI response
-      const aiMessageData = {
-        farmerId,
-        sender: "ai",
-        message: aiResponse
-      };
-      
-      const aiMessage = await storage.createChatMessage(aiMessageData);
-      
-      return res.status(201).json([userMessage, aiMessage]);
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Error processing chat message" });
+    }
+  });
+  
+  // Interactive Crop Recommendation Wizard API
+  app.post('/api/crop-wizard/recommend', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { soilType, location, seasonality, waterAvailability, previousCrops } = req.body;
+      
+      if (!soilType || !location || !seasonality || !waterAvailability) {
+        return res.status(400).json({ message: "Missing required field information" });
+      }
+      
+      // Get AI-powered crop recommendations
+      const recommendations = await getCropRecommendations(
+        soilType,
+        location,
+        seasonality,
+        waterAvailability,
+        previousCrops || "None"
+      );
+      
+      // Store the recommendations in the database
+      const farmerId = req.session.farmerId as number;
+      const cropRecommendationPromises = recommendations.recommendedCrops.map(async (crop) => {
+        const recommendationData = {
+          farmerId,
+          cropName: crop.crop,
+          cropVariety: "Standard Variety", // Default value since we don't have specific variety data
+          suitabilityScore: Math.round(crop.confidence * 100), // Convert confidence to 0-100 score
+          description: crop.reasoning,
+          daysToMaturity: crop.crop.includes("Rice") ? 120 : crop.crop.includes("Wheat") ? 145 : 90, // Example values
+          eNamPrice: crop.crop.includes("Rice") ? 2200 : crop.crop.includes("Wheat") ? 2100 : 1800, // Example values in rupees per quintal
+          priceTrend: 0.5, // Example value (0.5% increase)
+          marketDemand: crop.confidence > 0.8 ? "High" : crop.confidence > 0.6 ? "Medium" : "Low"
+        };
+        
+        return storage.createCropRecommendation(recommendationData);
+      });
+      
+      await Promise.all(cropRecommendationPromises);
+      
+      return res.status(200).json(recommendations);
+    } catch (error) {
+      console.error("Error in crop recommendation wizard:", error);
+      return res.status(500).json({ message: "Failed to generate crop recommendations" });
+    }
+  });
+  
+  // Government Subsidy API
+  app.post('/api/subsidies/recommend', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { location, landSize, crops, income, category } = req.body;
+      
+      if (!location || !landSize || !crops || !income || !category) {
+        return res.status(400).json({ message: "Missing required farmer information" });
+      }
+      
+      // Get AI-powered subsidy recommendations
+      const recommendations = await getSubsidyRecommendations({
+        location,
+        landSize,
+        crops: Array.isArray(crops) ? crops : [crops],
+        income,
+        category
+      });
+      
+      return res.status(200).json(recommendations);
+    } catch (error) {
+      console.error("Error in subsidy recommendations:", error);
+      return res.status(500).json({ message: "Failed to generate subsidy recommendations" });
     }
   });
   

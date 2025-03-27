@@ -9,6 +9,7 @@ import Irrigation from "@/pages/irrigation";
 import Loans from "@/pages/loans";
 import Market from "@/pages/market";
 import Assistant from "@/pages/assistant";
+import CropWizard from "@/pages/crop-wizard";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 // Protected route component
@@ -62,6 +63,9 @@ function Router() {
       </Route>
       <Route path="/assistant">
         {() => <ProtectedRoute component={Assistant} />}
+      </Route>
+      <Route path="/crop-wizard">
+        {() => <ProtectedRoute component={CropWizard} />}
       </Route>
       <Route path="/:rest*">
         {() => <PublicRoute component={NotFound} />}
