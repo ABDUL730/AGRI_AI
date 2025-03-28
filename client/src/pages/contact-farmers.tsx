@@ -219,120 +219,120 @@ export default function ContactFarmers() {
                       )}
                     </TabsTrigger>
                   </TabsList>
+                
+                  <CardContent className="pb-2">
+                    <div className="relative mb-4">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        type="text" 
+                        placeholder={activeTab === "farmers" ? t("Search farmers...") : t("Search conversations...")}
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    
+                    <TabsContent value="farmers" className="mt-0 space-y-2 h-[450px] overflow-y-auto">
+                      {isFarmersLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : filteredFarmers.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          {searchQuery ? t("No farmers matching your search") : t("No farmers available")}
+                        </div>
+                      ) : (
+                        filteredFarmers.map(farmer => (
+                          <Card 
+                            key={farmer.id} 
+                            className={`cursor-pointer hover:bg-accent/20 ${
+                              selectedFarmerId === farmer.id ? 'bg-accent/30' : ''
+                            }`}
+                            onClick={() => {
+                              setSelectedFarmerId(farmer.id);
+                              setActiveTab("messages");
+                            }}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <User className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="ml-3">
+                                  <div className="font-medium">{farmer.fullName}</div>
+                                  <div className="text-xs text-muted-foreground">{farmer.location}</div>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="ml-auto"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFarmerId(farmer.id);
+                                    setActiveTab("messages");
+                                  }}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="messages" className="mt-0 space-y-2 h-[450px] overflow-y-auto">
+                      {isMessagesLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : conversations.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          {t("No conversations yet")}
+                        </div>
+                      ) : (
+                        conversations
+                          .filter(convo => 
+                            !searchQuery || 
+                            convo.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            convo.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+                          )
+                          .map(conversation => (
+                            <Card 
+                              key={conversation.farmerId} 
+                              className={`cursor-pointer hover:bg-accent/20 ${
+                                selectedFarmerId === conversation.farmerId ? 'bg-accent/30' : ''
+                              }`}
+                              onClick={() => setSelectedFarmerId(conversation.farmerId)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
+                                    <User className="h-5 w-5 text-primary" />
+                                    {conversation.unreadCount > 0 && (
+                                      <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                        {conversation.unreadCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="ml-3 flex-1 overflow-hidden">
+                                    <div className="font-medium">{conversation.farmerName}</div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {conversation.lastMessage}
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                                    {formatDistanceToNow(new Date(conversation.lastMessageTime), { addSuffix: true })}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                      )}
+                    </TabsContent>
+                  </CardContent>
                 </Tabs>
               </CardHeader>
-              
-              <CardContent className="pb-2">
-                <div className="relative mb-4">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    type="text" 
-                    placeholder={activeTab === "farmers" ? t("Search farmers...") : t("Search conversations...")}
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                
-                <TabsContent value="farmers" className="mt-0 space-y-2 h-[450px] overflow-y-auto">
-                  {isFarmersLoading ? (
-                    <div className="flex justify-center items-center h-40">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : filteredFarmers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {searchQuery ? t("No farmers matching your search") : t("No farmers available")}
-                    </div>
-                  ) : (
-                    filteredFarmers.map(farmer => (
-                      <Card 
-                        key={farmer.id} 
-                        className={`cursor-pointer hover:bg-accent/20 ${
-                          selectedFarmerId === farmer.id ? 'bg-accent/30' : ''
-                        }`}
-                        onClick={() => {
-                          setSelectedFarmerId(farmer.id);
-                          setActiveTab("messages");
-                        }}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="ml-3">
-                              <div className="font-medium">{farmer.fullName}</div>
-                              <div className="text-xs text-muted-foreground">{farmer.location}</div>
-                            </div>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="ml-auto"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFarmerId(farmer.id);
-                                setActiveTab("messages");
-                              }}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="messages" className="mt-0 space-y-2 h-[450px] overflow-y-auto">
-                  {isMessagesLoading ? (
-                    <div className="flex justify-center items-center h-40">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : conversations.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {t("No conversations yet")}
-                    </div>
-                  ) : (
-                    conversations
-                      .filter(convo => 
-                        !searchQuery || 
-                        convo.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        convo.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map(conversation => (
-                        <Card 
-                          key={conversation.farmerId} 
-                          className={`cursor-pointer hover:bg-accent/20 ${
-                            selectedFarmerId === conversation.farmerId ? 'bg-accent/30' : ''
-                          }`}
-                          onClick={() => setSelectedFarmerId(conversation.farmerId)}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex items-center">
-                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
-                                <User className="h-5 w-5 text-primary" />
-                                {conversation.unreadCount > 0 && (
-                                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                    {conversation.unreadCount}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="ml-3 flex-1 overflow-hidden">
-                                <div className="font-medium">{conversation.farmerName}</div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {conversation.lastMessage}
-                                </div>
-                              </div>
-                              <div className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                                {formatDistanceToNow(new Date(conversation.lastMessageTime), { addSuffix: true })}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
-                  )}
-                </TabsContent>
-              </CardContent>
             </Card>
           </div>
           
