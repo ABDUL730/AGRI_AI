@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
+import { useBuyer } from "@/hooks/use-buyer";
 
 interface NavigationItem {
   path: string;
@@ -16,8 +17,13 @@ export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
   const { language, setLanguage, t } = useLanguage();
   const { user, logoutMutation } = useAuth();
+  const { buyer, logoutMutation: buyerLogoutMutation } = useBuyer();
 
-  const navigationItems: NavigationItem[] = [
+  // Determine if we're in buyer or farmer mode
+  const isBuyer = !!buyer;
+
+  // Define farmer navigation items
+  const farmerNavigationItems: NavigationItem[] = [
     { path: "/", icon: "dashboard", label: t("Dashboard") },
     { path: "/crop-management", icon: "grass", label: t("Crop Management") },
     { path: "/irrigation", icon: "water_drop", label: t("Irrigation") },
@@ -27,6 +33,18 @@ export function Sidebar({ className }: SidebarProps) {
     { path: "/settings", icon: "settings", label: t("Settings") },
   ];
 
+  // Define buyer navigation items (without crop management, irrigation, loans & subsidies)
+  const buyerNavigationItems: NavigationItem[] = [
+    { path: "/", icon: "dashboard", label: t("Dashboard") },
+    { path: "/market", icon: "shopping_cart", label: t("Market Connect") },
+    { path: "/contact-farmers", icon: "message", label: t("Contact Farmers") },
+    { path: "/assistant", icon: "forum", label: t("AI Assistant") },
+    { path: "/settings", icon: "settings", label: t("Settings") },
+  ];
+
+  // Choose the correct navigation items based on user type
+  const navigationItems = isBuyer ? buyerNavigationItems : farmerNavigationItems;
+
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     // Type safety - cast as any since we know these values align with our Language type
@@ -34,7 +52,11 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   const handleLogout = () => {
-    logoutMutation.mutate();
+    if (isBuyer) {
+      buyerLogoutMutation.mutate();
+    } else {
+      logoutMutation.mutate();
+    }
   };
 
   return (
@@ -89,17 +111,17 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="p-4 border-t border-primary-dark">
           <div className="flex items-center">
             <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center text-primary">
-              <span className="material-icons text-sm">person</span>
+              <span className="material-icons text-sm">{isBuyer ? "store" : "person"}</span>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium">{user?.fullName || '...'}</p>
-              <p className="text-xs">{user?.location || '...'}</p>
+              <p className="text-sm font-medium">{isBuyer ? buyer?.fullName : user?.fullName}</p>
+              <p className="text-xs">{isBuyer ? buyer?.location : user?.location}</p>
             </div>
             <button 
               type="button" 
               className="ml-auto hover:bg-primary-dark p-1.5 rounded-full transition-colors" 
               onClick={handleLogout}
-              disabled={logoutMutation.isPending}
+              disabled={isBuyer ? buyerLogoutMutation.isPending : logoutMutation.isPending}
               aria-label={t("Logout")}
               title={t("Logout")}
             >

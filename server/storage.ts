@@ -12,7 +12,8 @@ import {
   IrrigationHistory, InsertIrrigationHistory,
   Buyer, InsertBuyer,
   CropListing, InsertCropListing,
-  PurchaseRequest, InsertPurchaseRequest
+  PurchaseRequest, InsertPurchaseRequest,
+  DirectMessage, InsertDirectMessage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -21,6 +22,7 @@ export interface IStorage {
   getFarmerByUsername(username: string): Promise<Farmer | undefined>;
   createFarmer(farmer: InsertFarmer): Promise<Farmer>;
   updateFarmer(id: number, farmer: Partial<Farmer>): Promise<Farmer | undefined>;
+  getFarmers(): Promise<Farmer[]>;
   
   // Field operations
   getField(id: number): Promise<Field | undefined>;
@@ -93,6 +95,13 @@ export interface IStorage {
   getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined>;
   createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest>;
   updatePurchaseRequest(id: number, request: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined>;
+
+  // Direct Message operations
+  getDirectMessages(userId: number, userType: string): Promise<DirectMessage[]>;
+  getConversation(senderId: number, senderType: string, receiverId: number, receiverType: string): Promise<DirectMessage[]>;
+  createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  markDirectMessageAsRead(id: number): Promise<DirectMessage | undefined>;
+  getUnreadMessageCount(userId: number, userType: string): Promise<{count: number}>;
 }
 
 export class MemStorage implements IStorage {
@@ -110,6 +119,7 @@ export class MemStorage implements IStorage {
   private buyers: Map<number, Buyer>;
   private cropListings: Map<number, CropListing>;
   private purchaseRequests: Map<number, PurchaseRequest>;
+  private directMessages: Map<number, DirectMessage>;
   
   private farmerId: number;
   private fieldId: number;
@@ -124,6 +134,7 @@ export class MemStorage implements IStorage {
   private buyerId: number;
   private cropListingId: number;
   private purchaseRequestId: number;
+  private directMessageId: number;
 
   constructor() {
     this.farmers = new Map();
@@ -140,6 +151,7 @@ export class MemStorage implements IStorage {
     this.buyers = new Map();
     this.cropListings = new Map();
     this.purchaseRequests = new Map();
+    this.directMessages = new Map();
     
     this.farmerId = 1;
     this.fieldId = 1;
@@ -154,6 +166,7 @@ export class MemStorage implements IStorage {
     this.buyerId = 1;
     this.cropListingId = 1;
     this.purchaseRequestId = 1;
+    this.directMessageId = 1;
     
     // Initialize with sample data
     this.initializeData();
@@ -422,6 +435,10 @@ export class MemStorage implements IStorage {
     const updatedFarmer = { ...farmer, ...farmerData };
     this.farmers.set(id, updatedFarmer);
     return updatedFarmer;
+  }
+  
+  async getFarmers(): Promise<Farmer[]> {
+    return Array.from(this.farmers.values());
   }
 
   // Field operations
@@ -822,6 +839,51 @@ export class MemStorage implements IStorage {
     this.purchaseRequests.set(id, updatedRequest);
     return updatedRequest;
   }
+
+  // Direct Message operations
+  async getDirectMessages(userId: number, userType: string): Promise<DirectMessage[]> {
+    return Array.from(this.directMessages.values()).filter(
+      (message) => 
+        (message.senderId === userId && message.senderType === userType) || 
+        (message.receiverId === userId && message.receiverType === userType)
+    ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }
+
+  async getConversation(user1Id: number, user1Type: string, user2Id: number, user2Type: string): Promise<DirectMessage[]> {
+    return Array.from(this.directMessages.values()).filter(
+      (message) => 
+        (message.senderId === user1Id && message.senderType === user1Type && message.receiverId === user2Id && message.receiverType === user2Type) ||
+        (message.senderId === user2Id && message.senderType === user2Type && message.receiverId === user1Id && message.receiverType === user1Type)
+    ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }
+
+  async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
+    const id = this.directMessageId++;
+    const newMessage: DirectMessage = { 
+      ...message, 
+      id, 
+      timestamp: new Date(),
+      isRead: false
+    };
+    this.directMessages.set(id, newMessage);
+    return newMessage;
+  }
+
+  async markDirectMessageAsRead(id: number): Promise<DirectMessage | undefined> {
+    const message = this.directMessages.get(id);
+    if (!message) return undefined;
+    
+    const updatedMessage = { ...message, isRead: true };
+    this.directMessages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+
+  async getUnreadMessageCount(userId: number, userType: string): Promise<{count: number}> {
+    const count = Array.from(this.directMessages.values()).filter(
+      (message) => message.receiverId === userId && message.receiverType === userType && !message.isRead
+    ).length;
+    return { count };
+  }
 }
 
 // Import the PostgreSQL storage implementation
@@ -856,6 +918,7 @@ export const storage: IStorage = {
   getFarmerByUsername: (...args) => activeStorage.getFarmerByUsername(...args),
   createFarmer: (...args) => activeStorage.createFarmer(...args),
   updateFarmer: (...args) => activeStorage.updateFarmer(...args),
+  getFarmers: () => activeStorage.getFarmers(),
   
   getField: (...args) => activeStorage.getField(...args),
   getFieldsByFarmerId: (...args) => activeStorage.getFieldsByFarmerId(...args),
@@ -921,4 +984,11 @@ export const storage: IStorage = {
   getPurchaseRequest: (...args) => memStorage.getPurchaseRequest(...args),
   createPurchaseRequest: (...args) => memStorage.createPurchaseRequest(...args),
   updatePurchaseRequest: (...args) => memStorage.updatePurchaseRequest(...args),
+  
+  // Direct Message operations
+  getDirectMessages: (...args) => memStorage.getDirectMessages(...args),
+  getConversation: (...args) => memStorage.getConversation(...args),
+  createDirectMessage: (...args) => memStorage.createDirectMessage(...args),
+  markDirectMessageAsRead: (...args) => memStorage.markDirectMessageAsRead(...args),
+  getUnreadMessageCount: (...args) => memStorage.getUnreadMessageCount(...args),
 };

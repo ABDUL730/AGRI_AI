@@ -12,6 +12,7 @@ import Assistant from "@/pages/assistant";
 import CropWizard from "@/pages/crop-wizard";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
+import ContactFarmers from "@/pages/contact-farmers";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { BuyerProvider, useBuyer } from "@/hooks/use-buyer";
 
@@ -107,6 +108,9 @@ function Router() {
       </Route>
       <Route path="/crop-wizard">
         {() => <ProtectedRoute component={CropWizard} />}
+      </Route>
+      <Route path="/contact-farmers">
+        {() => <ProtectedRoute component={ContactFarmers} requiresBuyer={true} />}
       </Route>
       <Route path="/settings">
         {() => <ProtectedRoute component={Settings} />}

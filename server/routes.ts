@@ -21,7 +21,8 @@ import {
   insertIrrigationHistorySchema,
   insertBuyerSchema,
   insertCropListingSchema,
-  insertPurchaseRequestSchema
+  insertPurchaseRequestSchema,
+  insertDirectMessageSchema
 } from "@shared/schema";
 import { getAIChatResponse, getCropRecommendations, getSubsidyRecommendations } from "./services/openai";
 
@@ -1244,6 +1245,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Error updating purchase request" });
+    }
+  });
+
+  // Direct Message API Routes
+  // Get all direct messages for a user (farmer or buyer)
+  app.get('/api/direct-messages/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      const messages = await storage.getDirectMessages(farmerId, "farmer");
+      return res.status(200).json(messages);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching direct messages" });
+    }
+  });
+
+  app.get('/api/direct-messages/buyer', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const buyerId = req.session.buyerId as number;
+      const messages = await storage.getDirectMessages(buyerId, "buyer");
+      return res.status(200).json(messages);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching direct messages" });
+    }
+  });
+
+  // Get conversation between a farmer and a buyer
+  app.get('/api/direct-messages/conversation/farmer/:buyerId', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      const buyerId = parseInt(req.params.buyerId);
+      
+      if (isNaN(buyerId)) {
+        return res.status(400).json({ message: "Invalid buyer ID" });
+      }
+      
+      const messages = await storage.getConversation(farmerId, "farmer", buyerId, "buyer");
+      return res.status(200).json(messages);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching conversation" });
+    }
+  });
+
+  app.get('/api/direct-messages/conversation/buyer/:farmerId', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const buyerId = req.session.buyerId as number;
+      const farmerId = parseInt(req.params.farmerId);
+      
+      if (isNaN(farmerId)) {
+        return res.status(400).json({ message: "Invalid farmer ID" });
+      }
+      
+      const messages = await storage.getConversation(buyerId, "buyer", farmerId, "farmer");
+      return res.status(200).json(messages);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching conversation" });
+    }
+  });
+
+  // Send a direct message (from farmer to buyer)
+  app.post('/api/direct-messages/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const senderId = req.session.farmerId as number;
+      
+      const messageData = {
+        ...req.body,
+        senderId: senderId,
+        senderType: "farmer"
+      };
+      
+      const validationResult = insertDirectMessageSchema.safeParse(messageData);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid message data", errors: validationResult.error.errors });
+      }
+      
+      const newMessage = await storage.createDirectMessage(validationResult.data);
+      return res.status(201).json(newMessage);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error sending message" });
+    }
+  });
+
+  // Send a direct message (from buyer to farmer)
+  app.post('/api/direct-messages/buyer', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const senderId = req.session.buyerId as number;
+      
+      const messageData = {
+        ...req.body,
+        senderId: senderId,
+        senderType: "buyer"
+      };
+      
+      const validationResult = insertDirectMessageSchema.safeParse(messageData);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid message data", errors: validationResult.error.errors });
+      }
+      
+      const newMessage = await storage.createDirectMessage(validationResult.data);
+      return res.status(201).json(newMessage);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error sending message" });
+    }
+  });
+
+  // Mark message as read
+  app.put('/api/direct-messages/:id/read', async (req: Request, res: Response) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      
+      if (isNaN(messageId)) {
+        return res.status(400).json({ message: "Invalid message ID" });
+      }
+      
+      // Check if the user is authorized to mark this message as read
+      // (Either a farmer or buyer who is the receiver of the message)
+      const message = await storage.markDirectMessageAsRead(messageId);
+      
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      
+      return res.status(200).json(message);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error marking message as read" });
+    }
+  });
+
+  // Get unread message count for a user
+  app.get('/api/direct-messages/unread/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      const count = await storage.getUnreadMessageCount(farmerId, "farmer");
+      return res.status(200).json({ count });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error getting unread message count" });
+    }
+  });
+
+  app.get('/api/direct-messages/unread/buyer', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const buyerId = req.session.buyerId as number;
+      const count = await storage.getUnreadMessageCount(buyerId, "buyer");
+      return res.status(200).json({ count });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error getting unread message count" });
+    }
+  });
+
+  // Get list of farmers (for buyer's contact page)
+  app.get('/api/farmers', async (req: Request, res: Response) => {
+    try {
+      const farmers = await storage.getFarmers();
+      // Return only necessary information (without passwords and other sensitive data)
+      const publicFarmerData = farmers.map(({ id, fullName, location, phoneNumber, username }) => ({
+        id,
+        fullName,
+        location,
+        phoneNumber,
+        username,
+      }));
+      return res.status(200).json(publicFarmerData);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching farmers list" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, and, or, count } from 'drizzle-orm';
 import { db } from './index';
 import {
   IStorage,
@@ -10,8 +10,16 @@ import {
   MarketData, InsertMarketData,
   ChatMessage, InsertChatMessage,
   Notification, InsertNotification,
+  DirectMessage, InsertDirectMessage,
+  IrrigationSystem, InsertIrrigationSystem,
+  IrrigationSchedule, InsertIrrigationSchedule,
+  IrrigationHistory, InsertIrrigationHistory,
+  Buyer, InsertBuyer,
+  CropListing, InsertCropListing,
+  PurchaseRequest, InsertPurchaseRequest,
   farmers, fields, weatherData, cropRecommendations,
-  financialAssistance, marketData, chatMessages, notifications
+  financialAssistance, marketData, chatMessages, notifications,
+  directMessages
 } from '@shared/schema';
 
 // Helper function to safely handle database operations if db is null
@@ -60,6 +68,12 @@ export class PostgresStorage implements IStorage {
       const result = await db!.update(farmers).set(farmer).where(eq(farmers.id, id)).returning();
       return result[0];
     }, undefined);
+  }
+  
+  async getFarmers(): Promise<Farmer[]> {
+    return safeDbOperation(async () => {
+      return await db!.select().from(farmers);
+    }, []);
   }
 
   // Field operations
@@ -275,5 +289,313 @@ export class PostgresStorage implements IStorage {
         .returning();
       return result[0];
     }, undefined);
+  }
+
+  // Direct Message operations
+  async getDirectMessages(userId: number, userType: string): Promise<DirectMessage[]> {
+    return safeDbOperation(async () => {
+      return await db!.select()
+        .from(directMessages)
+        .where(
+          or(
+            and(
+              eq(directMessages.senderId, userId),
+              eq(directMessages.senderType, userType)
+            ),
+            and(
+              eq(directMessages.receiverId, userId),
+              eq(directMessages.receiverType, userType)
+            )
+          )
+        )
+        .orderBy(directMessages.timestamp);
+    }, []);
+  }
+
+  async getConversation(senderId: number, senderType: string, receiverId: number, receiverType: string): Promise<DirectMessage[]> {
+    return safeDbOperation(async () => {
+      return await db!.select()
+        .from(directMessages)
+        .where(
+          or(
+            and(
+              eq(directMessages.senderId, senderId),
+              eq(directMessages.senderType, senderType),
+              eq(directMessages.receiverId, receiverId),
+              eq(directMessages.receiverType, receiverType)
+            ),
+            and(
+              eq(directMessages.senderId, receiverId),
+              eq(directMessages.senderType, receiverType),
+              eq(directMessages.receiverId, senderId),
+              eq(directMessages.receiverType, senderType)
+            )
+          )
+        )
+        .orderBy(directMessages.timestamp);
+    }, []);
+  }
+
+  async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
+    return safeDbOperation(async () => {
+      const result = await db!.insert(directMessages)
+        .values({
+          senderId: message.senderId,
+          receiverId: message.receiverId,
+          senderType: message.senderType,
+          receiverType: message.receiverType,
+          message: message.message,
+          relatedListingId: message.relatedListingId || null,
+          relatedRequestId: message.relatedRequestId || null,
+          isRead: false,
+          timestamp: new Date()
+        })
+        .returning();
+      return result[0];
+    }, {
+      id: 0,
+      message: '',
+      timestamp: new Date(),
+      isRead: false,
+      senderId: 0,
+      receiverId: 0,
+      senderType: '',
+      receiverType: '',
+      relatedListingId: null,
+      relatedRequestId: null
+    });
+  }
+
+  async markDirectMessageAsRead(id: number): Promise<DirectMessage | undefined> {
+    return safeDbOperation(async () => {
+      const result = await db!.update(directMessages)
+        .set({ isRead: true })
+        .where(eq(directMessages.id, id))
+        .returning();
+      return result[0];
+    }, undefined);
+  }
+
+  async getUnreadMessageCount(userId: number, userType: string): Promise<{count: number}> {
+    return safeDbOperation(async () => {
+      const result = await db!.select({ count: count() })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.receiverId, userId),
+            eq(directMessages.receiverType, userType),
+            eq(directMessages.isRead, false)
+          )
+        );
+      return result[0] || { count: 0 };
+    }, { count: 0 });
+  }
+  
+  // Irrigation operations - These stubs are required by the interface
+  // but rely on the memory storage implementation for now
+  async getIrrigationSystemsByFieldId(fieldId: number): Promise<IrrigationSystem[]> {
+    return [];
+  }
+
+  async getIrrigationSystem(id: number): Promise<IrrigationSystem | undefined> {
+    return undefined;
+  }
+
+  async createIrrigationSystem(system: InsertIrrigationSystem): Promise<IrrigationSystem> {
+    return {
+      id: 0,
+      name: '',
+      fieldId: 0,
+      type: '',
+      status: '',
+      waterSource: '',
+      installationDate: null,
+      lastMaintenanceDate: null,
+      sensorData: null,
+      createdAt: null
+    };
+  }
+
+  async updateIrrigationSystem(id: number, system: Partial<IrrigationSystem>): Promise<IrrigationSystem | undefined> {
+    return undefined;
+  }
+
+  async deleteIrrigationSystem(id: number): Promise<void> {
+    return;
+  }
+
+  // Irrigation schedule operations
+  async getIrrigationSchedules(systemId: number): Promise<IrrigationSchedule[]> {
+    return [];
+  }
+
+  async getIrrigationSchedule(id: number): Promise<IrrigationSchedule | undefined> {
+    return undefined;
+  }
+
+  async createIrrigationSchedule(schedule: InsertIrrigationSchedule): Promise<IrrigationSchedule> {
+    return {
+      id: 0,
+      name: '',
+      createdAt: null,
+      status: '',
+      systemId: 0,
+      frequency: '',
+      startTime: new Date(),
+      duration: 0,
+      daysOfWeek: null,
+      isActive: null,
+      waterAmount: null,
+      adjustForWeather: null,
+      lastRunTime: null,
+      nextRunTime: null
+    };
+  }
+
+  async updateIrrigationSchedule(id: number, schedule: Partial<IrrigationSchedule>): Promise<IrrigationSchedule | undefined> {
+    return undefined;
+  }
+
+  async deleteIrrigationSchedule(id: number): Promise<void> {
+    return;
+  }
+
+  // Irrigation history operations
+  async getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]> {
+    return [];
+  }
+
+  async getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined> {
+    return undefined;
+  }
+
+  async createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory> {
+    return {
+      id: 0,
+      fieldId: 0,
+      systemId: 0,
+      startTime: new Date(),
+      endTime: null,
+      duration: null,
+      waterAmount: null,
+      scheduleId: null,
+      weatherConditions: null,
+      notes: null
+    };
+  }
+
+  // Buyer operations - These stubs are required by the interface
+  // but rely on the memory storage implementation for now
+  async getBuyer(id: number): Promise<Buyer | undefined> {
+    return undefined;
+  }
+
+  async getBuyerByUsername(username: string): Promise<Buyer | undefined> {
+    return undefined;
+  }
+
+  async createBuyer(buyer: InsertBuyer): Promise<Buyer> {
+    return {
+      id: 0,
+      username: '',
+      password: '',
+      fullName: '',
+      location: '',
+      phoneNumber: '',
+      preferredLanguage: null,
+      createdAt: null,
+      companyName: null,
+      businessType: '',
+      email: '',
+      verificationStatus: null
+    };
+  }
+
+  async updateBuyer(id: number, buyer: Partial<Buyer>): Promise<Buyer | undefined> {
+    return undefined;
+  }
+
+  // Crop Listing operations
+  async getCropListings(): Promise<CropListing[]> {
+    return [];
+  }
+
+  async getCropListingsByFarmerId(farmerId: number): Promise<CropListing[]> {
+    return [];
+  }
+
+  async getCropListing(id: number): Promise<CropListing | undefined> {
+    return undefined;
+  }
+
+  async createCropListing(listing: InsertCropListing): Promise<CropListing> {
+    return {
+      id: 0,
+      farmerId: 0,
+      cropName: '',
+      cropVariety: '',
+      title: '',
+      quantity: 0,
+      unit: '',
+      pricePerUnit: 0,
+      qualityGrade: '',
+      description: '',
+      location: '',
+      harvestDate: new Date(),
+      organicCertified: false,
+      availableUntil: null,
+      images: null,
+      deliveryOptions: null
+    };
+  }
+
+  async updateCropListing(id: number, listing: Partial<CropListing>): Promise<CropListing | undefined> {
+    return undefined;
+  }
+
+  async deleteCropListing(id: number): Promise<void> {
+    return;
+  }
+
+  // Purchase Request operations
+  async getPurchaseRequests(): Promise<PurchaseRequest[]> {
+    return [];
+  }
+
+  async getPurchaseRequestsByBuyerId(buyerId: number): Promise<PurchaseRequest[]> {
+    return [];
+  }
+
+  async getPurchaseRequestsByFarmerId(farmerId: number): Promise<PurchaseRequest[]> {
+    return [];
+  }
+
+  async getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined> {
+    return undefined;
+  }
+
+  async createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest> {
+    return {
+      id: 0,
+      listingId: 0,
+      buyerId: 0,
+      farmerId: 0,
+      requestedQuantity: 0,
+      bidPricePerUnit: null,
+      requestDate: null,
+      responseDate: null,
+      completedDate: null,
+      status: null,
+      message: null,
+      notes: null,
+      paymentStatus: null,
+      paymentMethod: null,
+      deliveryMethod: null,
+      contactNumber: null
+    };
+  }
+
+  async updatePurchaseRequest(id: number, request: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined> {
+    return undefined;
   }
 }

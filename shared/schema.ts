@@ -81,6 +81,13 @@ export interface IStorage {
   getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined>;
   createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest>;
   updatePurchaseRequest(id: number, request: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined>;
+  
+  // Direct Message operations
+  getDirectMessages(userId: number, userType: string): Promise<DirectMessage[]>;
+  getConversation(user1Id: number, user1Type: string, user2Id: number, user2Type: string): Promise<DirectMessage[]>;
+  createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  markDirectMessageAsRead(id: number): Promise<DirectMessage | undefined>;
+  getUnreadMessageCount(userId: number, userType: string): Promise<number>;
 }
 
 // User/Farmer Schema
@@ -522,3 +529,31 @@ export type InsertCropListing = z.infer<typeof insertCropListingSchema>;
 // Export PurchaseRequest types
 export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
 export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
+
+// Direct Messages Schema
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull(),
+  receiverId: integer("receiver_id").notNull(),
+  senderType: text("sender_type").notNull(), // "farmer" or "buyer"
+  receiverType: text("receiver_type").notNull(), // "farmer" or "buyer"
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false),
+  timestamp: timestamp("timestamp").defaultNow(),
+  relatedListingId: integer("related_listing_id"), // Optional reference to crop listing
+  relatedRequestId: integer("related_request_id"), // Optional reference to purchase request
+});
+
+export const insertDirectMessageSchema = createInsertSchema(directMessages).pick({
+  senderId: true,
+  receiverId: true,
+  senderType: true,
+  receiverType: true,
+  message: true,
+  relatedListingId: true,
+  relatedRequestId: true,
+});
+
+// Export DirectMessage types
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
