@@ -74,7 +74,7 @@ export function AddFieldForm({ isOpen, onClose }: AddFieldFormProps) {
 
   const fieldMutation = useMutation({
     mutationFn: (data: FormValues) => 
-      apiRequest("/api/fields", "POST", JSON.stringify(data)),
+      apiRequest("POST", "/api/fields", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/fields'] });
       toast({
