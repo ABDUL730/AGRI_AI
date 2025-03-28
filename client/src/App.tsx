@@ -46,7 +46,7 @@ function Router() {
       <Route path="/login">
         {() => <PublicRoute component={Login} />}
       </Route>
-      <Route path="/" exact>
+      <Route path="/">
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
       <Route path="/crop-management">

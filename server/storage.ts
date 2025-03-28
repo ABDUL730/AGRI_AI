@@ -9,7 +9,10 @@ import {
   Notification, InsertNotification,
   IrrigationSystem, InsertIrrigationSystem,
   IrrigationSchedule, InsertIrrigationSchedule,
-  IrrigationHistory, InsertIrrigationHistory
+  IrrigationHistory, InsertIrrigationHistory,
+  Buyer, InsertBuyer,
+  CropListing, InsertCropListing,
+  PurchaseRequest, InsertPurchaseRequest
 } from "@shared/schema";
 
 export interface IStorage {
@@ -68,6 +71,28 @@ export interface IStorage {
   getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]>;
   getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined>;
   createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory>;
+  
+  // Buyer operations
+  getBuyer(id: number): Promise<Buyer | undefined>;
+  getBuyerByUsername(username: string): Promise<Buyer | undefined>;
+  createBuyer(buyer: InsertBuyer): Promise<Buyer>;
+  updateBuyer(id: number, buyer: Partial<Buyer>): Promise<Buyer | undefined>;
+  
+  // Crop Listing operations
+  getCropListings(): Promise<CropListing[]>;
+  getCropListingsByFarmerId(farmerId: number): Promise<CropListing[]>;
+  getCropListing(id: number): Promise<CropListing | undefined>;
+  createCropListing(listing: InsertCropListing): Promise<CropListing>;
+  updateCropListing(id: number, listing: Partial<CropListing>): Promise<CropListing | undefined>;
+  deleteCropListing(id: number): Promise<void>;
+  
+  // Purchase Request operations
+  getPurchaseRequests(): Promise<PurchaseRequest[]>;
+  getPurchaseRequestsByBuyerId(buyerId: number): Promise<PurchaseRequest[]>;
+  getPurchaseRequestsByFarmerId(farmerId: number): Promise<PurchaseRequest[]>;
+  getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined>;
+  createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest>;
+  updatePurchaseRequest(id: number, request: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -82,6 +107,9 @@ export class MemStorage implements IStorage {
   private irrigationSystems: Map<number, IrrigationSystem>;
   private irrigationSchedules: Map<number, IrrigationSchedule>;
   private irrigationHistory: Map<number, IrrigationHistory>;
+  private buyers: Map<number, Buyer>;
+  private cropListings: Map<number, CropListing>;
+  private purchaseRequests: Map<number, PurchaseRequest>;
   
   private farmerId: number;
   private fieldId: number;
@@ -93,6 +121,9 @@ export class MemStorage implements IStorage {
   private irrigationSystemId: number;
   private irrigationScheduleId: number;
   private irrigationHistoryId: number;
+  private buyerId: number;
+  private cropListingId: number;
+  private purchaseRequestId: number;
 
   constructor() {
     this.farmers = new Map();
@@ -106,6 +137,9 @@ export class MemStorage implements IStorage {
     this.irrigationSystems = new Map();
     this.irrigationSchedules = new Map();
     this.irrigationHistory = new Map();
+    this.buyers = new Map();
+    this.cropListings = new Map();
+    this.purchaseRequests = new Map();
     
     this.farmerId = 1;
     this.fieldId = 1;
@@ -117,6 +151,9 @@ export class MemStorage implements IStorage {
     this.irrigationSystemId = 1;
     this.irrigationScheduleId = 1;
     this.irrigationHistoryId = 1;
+    this.buyerId = 1;
+    this.cropListingId = 1;
+    this.purchaseRequestId = 1;
     
     // Initialize with sample data
     this.initializeData();
@@ -311,6 +348,39 @@ export class MemStorage implements IStorage {
     this.createNotification(notification1);
     this.createNotification(notification2);
     this.createNotification(notification3);
+    
+    // Create sample buyer
+    const sampleBuyer: InsertBuyer = {
+      username: "rajesh.agro",
+      password: "password123",
+      fullName: "Rajesh Agrawal",
+      location: "Pune, Maharashtra",
+      phoneNumber: "+91987654321",
+      email: "rajesh@agrobuyers.com",
+      companyName: "Agrawal AgroBuyers Ltd.",
+      businessType: "Wholesale",
+      preferredLanguage: "english"
+    };
+    this.createBuyer(sampleBuyer);
+    
+    // Create sample crop listing
+    const sampleListing: InsertCropListing = {
+      farmerId: 1,
+      cropName: "Wheat",
+      cropVariety: "HD-2967",
+      quantity: 5000,
+      unit: "kg",
+      pricePerUnit: 2200,
+      harvestDate: new Date(new Date().setDate(new Date().getDate() - 15)),
+      description: "Premium quality wheat harvested from pesticide-free field. Well dried and ready for immediate purchase.",
+      location: "Nagpur, Maharashtra",
+      images: ["/images/wheat-sample.jpg"],
+      availableFrom: new Date(),
+      availableUntil: new Date(new Date().setDate(new Date().getDate() + 30)),
+      organicCertified: true,
+      deliveryOptions: ["pickup", "delivery_within_50km"]
+    };
+    this.createCropListing(sampleListing);
   }
 
   // Farmer operations
@@ -580,6 +650,164 @@ export class MemStorage implements IStorage {
     this.irrigationHistory.set(id, newHistory);
     return newHistory;
   }
+
+  // Buyer operations
+  async getBuyer(id: number): Promise<Buyer | undefined> {
+    return this.buyers.get(id);
+  }
+
+  async getBuyerByUsername(username: string): Promise<Buyer | undefined> {
+    return Array.from(this.buyers.values()).find(
+      (buyer) => buyer.username === username
+    );
+  }
+
+  async createBuyer(buyer: InsertBuyer): Promise<Buyer> {
+    const id = this.buyerId++;
+    const newBuyer: Buyer = { 
+      ...buyer, 
+      id, 
+      createdAt: new Date(), 
+      verificationStatus: "pending"
+    };
+    this.buyers.set(id, newBuyer);
+    return newBuyer;
+  }
+
+  async updateBuyer(id: number, buyerData: Partial<Buyer>): Promise<Buyer | undefined> {
+    const buyer = this.buyers.get(id);
+    if (!buyer) return undefined;
+    
+    const updatedBuyer = { ...buyer, ...buyerData };
+    this.buyers.set(id, updatedBuyer);
+    return updatedBuyer;
+  }
+
+  // Crop Listing operations
+  async getCropListings(): Promise<CropListing[]> {
+    return Array.from(this.cropListings.values())
+      .filter(listing => listing.status === "available")
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getCropListingsByFarmerId(farmerId: number): Promise<CropListing[]> {
+    return Array.from(this.cropListings.values())
+      .filter(listing => listing.farmerId === farmerId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getCropListing(id: number): Promise<CropListing | undefined> {
+    return this.cropListings.get(id);
+  }
+
+  async createCropListing(listing: InsertCropListing): Promise<CropListing> {
+    const id = this.cropListingId++;
+    const now = new Date();
+    
+    const newListing: CropListing = {
+      ...listing,
+      id,
+      status: "available",
+      createdAt: now,
+      updatedAt: now,
+      images: listing.images || []
+    };
+    
+    this.cropListings.set(id, newListing);
+    return newListing;
+  }
+
+  async updateCropListing(id: number, listingData: Partial<CropListing>): Promise<CropListing | undefined> {
+    const listing = this.cropListings.get(id);
+    if (!listing) return undefined;
+    
+    const updatedListing = {
+      ...listing,
+      ...listingData,
+      updatedAt: new Date()
+    };
+    
+    this.cropListings.set(id, updatedListing);
+    return updatedListing;
+  }
+
+  async deleteCropListing(id: number): Promise<void> {
+    this.cropListings.delete(id);
+  }
+
+  // Purchase Request operations
+  async getPurchaseRequests(): Promise<PurchaseRequest[]> {
+    return Array.from(this.purchaseRequests.values())
+      .sort((a, b) => b.requestDate.getTime() - a.requestDate.getTime());
+  }
+
+  async getPurchaseRequestsByBuyerId(buyerId: number): Promise<PurchaseRequest[]> {
+    return Array.from(this.purchaseRequests.values())
+      .filter(request => request.buyerId === buyerId)
+      .sort((a, b) => b.requestDate.getTime() - a.requestDate.getTime());
+  }
+
+  async getPurchaseRequestsByFarmerId(farmerId: number): Promise<PurchaseRequest[]> {
+    return Array.from(this.purchaseRequests.values())
+      .filter(request => request.farmerId === farmerId)
+      .sort((a, b) => b.requestDate.getTime() - a.requestDate.getTime());
+  }
+
+  async getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined> {
+    return this.purchaseRequests.get(id);
+  }
+
+  async createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest> {
+    const id = this.purchaseRequestId++;
+    
+    const newRequest: PurchaseRequest = {
+      ...request,
+      id,
+      status: "pending",
+      requestDate: new Date(),
+      responseDate: null,
+      completedDate: null,
+      paymentStatus: "pending"
+    };
+    
+    this.purchaseRequests.set(id, newRequest);
+    
+    // Update the listing status to "pending_sale" if it exists
+    const listing = this.cropListings.get(request.listingId);
+    if (listing) {
+      listing.status = "pending_sale";
+      this.cropListings.set(listing.id, listing);
+    }
+    
+    return newRequest;
+  }
+
+  async updatePurchaseRequest(id: number, requestData: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined> {
+    const request = this.purchaseRequests.get(id);
+    if (!request) return undefined;
+    
+    const updatedRequest = { ...request, ...requestData };
+    
+    // If the status is being updated to "completed", update the listing status to "sold"
+    if (requestData.status === "completed" && request.status !== "completed") {
+      updatedRequest.completedDate = new Date();
+      
+      const listing = this.cropListings.get(request.listingId);
+      if (listing) {
+        listing.status = "sold";
+        this.cropListings.set(listing.id, listing);
+      }
+    }
+    
+    // If the status is being updated to "accepted" or "rejected", update the response date
+    if ((requestData.status === "accepted" || requestData.status === "rejected") 
+        && (request.status !== "accepted" && request.status !== "rejected")) {
+      updatedRequest.responseDate = new Date();
+    }
+    
+    this.purchaseRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
 }
 
 // Import the PostgreSQL storage implementation
@@ -657,4 +885,26 @@ export const storage: IStorage = {
   getIrrigationHistory: (...args) => memStorage.getIrrigationHistory(...args),
   getIrrigationHistoryById: (...args) => memStorage.getIrrigationHistoryById(...args),
   createIrrigationHistory: (...args) => memStorage.createIrrigationHistory(...args),
+  
+  // Buyer operations
+  getBuyer: (...args) => memStorage.getBuyer(...args),
+  getBuyerByUsername: (...args) => memStorage.getBuyerByUsername(...args),
+  createBuyer: (...args) => memStorage.createBuyer(...args),
+  updateBuyer: (...args) => memStorage.updateBuyer(...args),
+  
+  // Crop Listing operations
+  getCropListings: (...args) => memStorage.getCropListings(...args),
+  getCropListingsByFarmerId: (...args) => memStorage.getCropListingsByFarmerId(...args),
+  getCropListing: (...args) => memStorage.getCropListing(...args),
+  createCropListing: (...args) => memStorage.createCropListing(...args),
+  updateCropListing: (...args) => memStorage.updateCropListing(...args),
+  deleteCropListing: (...args) => memStorage.deleteCropListing(...args),
+  
+  // Purchase Request operations
+  getPurchaseRequests: (...args) => memStorage.getPurchaseRequests(...args),
+  getPurchaseRequestsByBuyerId: (...args) => memStorage.getPurchaseRequestsByBuyerId(...args),
+  getPurchaseRequestsByFarmerId: (...args) => memStorage.getPurchaseRequestsByFarmerId(...args),
+  getPurchaseRequest: (...args) => memStorage.getPurchaseRequest(...args),
+  createPurchaseRequest: (...args) => memStorage.createPurchaseRequest(...args),
+  updatePurchaseRequest: (...args) => memStorage.updatePurchaseRequest(...args),
 };

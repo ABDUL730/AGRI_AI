@@ -2,6 +2,15 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import session from "express-session";
+
+// Extend the Express Session type
+declare module "express-session" {
+  interface SessionData {
+    farmerId?: number;
+    buyerId?: number;
+  }
+}
 import { 
   insertFarmerSchema, 
   insertFieldSchema,
@@ -9,7 +18,10 @@ import {
   insertCropRecommendationSchema,
   insertIrrigationSystemSchema,
   insertIrrigationScheduleSchema,
-  insertIrrigationHistorySchema
+  insertIrrigationHistorySchema,
+  insertBuyerSchema,
+  insertCropListingSchema,
+  insertPurchaseRequestSchema
 } from "@shared/schema";
 import { getAIChatResponse, getCropRecommendations, getSubsidyRecommendations } from "./services/openai";
 
@@ -860,6 +872,369 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Error marking notification as read" });
+    }
+  });
+
+  // Buyer authentication routes
+  app.post('/api/buyer/login', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      const buyer = await storage.getBuyerByUsername(username);
+      
+      if (!buyer || buyer.password !== password) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+      
+      // Create a session
+      req.session.buyerId = buyer.id;
+      
+      return res.status(200).json({ 
+        id: buyer.id,
+        username: buyer.username,
+        fullName: buyer.fullName,
+        location: buyer.location,
+        preferredLanguage: buyer.preferredLanguage,
+        companyName: buyer.companyName,
+        businessType: buyer.businessType,
+        verificationStatus: buyer.verificationStatus
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error during login" });
+    }
+  });
+  
+  app.post('/api/buyer/register', async (req: Request, res: Response) => {
+    try {
+      const validationResult = insertBuyerSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid buyer data", errors: validationResult.error.errors });
+      }
+      
+      const existingBuyer = await storage.getBuyerByUsername(validationResult.data.username);
+      
+      if (existingBuyer) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+      
+      const newBuyer = await storage.createBuyer(validationResult.data);
+      
+      // Create a session
+      req.session.buyerId = newBuyer.id;
+      
+      return res.status(201).json({ 
+        id: newBuyer.id,
+        username: newBuyer.username,
+        fullName: newBuyer.fullName,
+        location: newBuyer.location,
+        companyName: newBuyer.companyName,
+        businessType: newBuyer.businessType,
+        verificationStatus: newBuyer.verificationStatus
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error during registration" });
+    }
+  });
+  
+  app.get('/api/buyer/check', async (req: Request, res: Response) => {
+    try {
+      if (req.session && req.session.buyerId) {
+        const buyer = await storage.getBuyer(req.session.buyerId as number);
+        
+        if (buyer) {
+          // Return buyer data without the password
+          const { password, ...buyerData } = buyer;
+          return res.status(200).json(buyerData);
+        }
+      }
+      
+      return res.status(401).json({ message: "Not authenticated" });
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  app.post('/api/buyer/logout', (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      
+      res.clearCookie("connect.sid");
+      return res.status(200).json({ message: "Logged out successfully" });
+    });
+  });
+  
+  // Middleware to check if buyer is authenticated
+  const isBuyerAuthenticated = (req: Request, res: Response, next: () => void) => {
+    // Check if session exists and has buyerId
+    if (!req.session || !req.session.buyerId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    next();
+  };
+  
+  // Crop Listing routes
+  app.get('/api/crop-listings', async (req: Request, res: Response) => {
+    try {
+      const listings = await storage.getCropListings();
+      return res.status(200).json(listings);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching crop listings" });
+    }
+  });
+  
+  app.get('/api/crop-listings/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      const listings = await storage.getCropListingsByFarmerId(farmerId);
+      return res.status(200).json(listings);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching farmer crop listings" });
+    }
+  });
+  
+  app.get('/api/crop-listings/:id', async (req: Request, res: Response) => {
+    try {
+      const listingId = parseInt(req.params.id);
+      
+      if (isNaN(listingId)) {
+        return res.status(400).json({ message: "Invalid listing ID" });
+      }
+      
+      const listing = await storage.getCropListing(listingId);
+      
+      if (!listing) {
+        return res.status(404).json({ message: "Crop listing not found" });
+      }
+      
+      return res.status(200).json(listing);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching crop listing" });
+    }
+  });
+  
+  app.post('/api/crop-listings', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      
+      const listingData = { ...req.body, farmerId };
+      const validationResult = insertCropListingSchema.safeParse(listingData);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid listing data", errors: validationResult.error.errors });
+      }
+      
+      const newListing = await storage.createCropListing(validationResult.data);
+      return res.status(201).json(newListing);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error creating crop listing" });
+    }
+  });
+  
+  app.put('/api/crop-listings/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const listingId = parseInt(req.params.id);
+      const farmerId = req.session.farmerId as number;
+      
+      if (isNaN(listingId)) {
+        return res.status(400).json({ message: "Invalid listing ID" });
+      }
+      
+      const listing = await storage.getCropListing(listingId);
+      
+      if (!listing) {
+        return res.status(404).json({ message: "Crop listing not found" });
+      }
+      
+      // Check if listing belongs to the authenticated farmer
+      if (listing.farmerId !== farmerId) {
+        return res.status(403).json({ message: "Unauthorized access to this listing" });
+      }
+      
+      const updatedListing = await storage.updateCropListing(listingId, req.body);
+      return res.status(200).json(updatedListing);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating crop listing" });
+    }
+  });
+  
+  app.delete('/api/crop-listings/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const listingId = parseInt(req.params.id);
+      const farmerId = req.session.farmerId as number;
+      
+      if (isNaN(listingId)) {
+        return res.status(400).json({ message: "Invalid listing ID" });
+      }
+      
+      const listing = await storage.getCropListing(listingId);
+      
+      if (!listing) {
+        return res.status(404).json({ message: "Crop listing not found" });
+      }
+      
+      // Check if listing belongs to the authenticated farmer
+      if (listing.farmerId !== farmerId) {
+        return res.status(403).json({ message: "Unauthorized access to this listing" });
+      }
+      
+      await storage.deleteCropListing(listingId);
+      return res.status(200).json({ message: "Crop listing deleted successfully" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error deleting crop listing" });
+    }
+  });
+  
+  // Purchase Request routes
+  app.get('/api/purchase-requests/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const farmerId = req.session.farmerId as number;
+      const requests = await storage.getPurchaseRequestsByFarmerId(farmerId);
+      return res.status(200).json(requests);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching purchase requests" });
+    }
+  });
+  
+  app.get('/api/purchase-requests/buyer', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const buyerId = req.session.buyerId as number;
+      const requests = await storage.getPurchaseRequestsByBuyerId(buyerId);
+      return res.status(200).json(requests);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching purchase requests" });
+    }
+  });
+  
+  app.post('/api/purchase-requests', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const buyerId = req.session.buyerId as number;
+      
+      const requestData = { ...req.body, buyerId };
+      const validationResult = insertPurchaseRequestSchema.safeParse(requestData);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid request data", errors: validationResult.error.errors });
+      }
+      
+      // Verify the listing exists
+      const listing = await storage.getCropListing(requestData.listingId);
+      if (!listing) {
+        return res.status(404).json({ message: "Crop listing not found" });
+      }
+      
+      // Add the farmer ID from the listing
+      const requestWithFarmer = {
+        ...validationResult.data,
+        farmerId: listing.farmerId
+      };
+      
+      const newRequest = await storage.createPurchaseRequest(requestWithFarmer);
+      return res.status(201).json(newRequest);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error creating purchase request" });
+    }
+  });
+  
+  app.put('/api/purchase-requests/:id/farmer', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const farmerId = req.session.farmerId as number;
+      
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: "Invalid request ID" });
+      }
+      
+      const request = await storage.getPurchaseRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Purchase request not found" });
+      }
+      
+      // Check if request is for this farmer
+      if (request.farmerId !== farmerId) {
+        return res.status(403).json({ message: "Unauthorized access to this request" });
+      }
+      
+      // Only allow status changes through this endpoint
+      if (!req.body.status) {
+        return res.status(400).json({ message: "Status update is required" });
+      }
+      
+      // Only allow status changes to "accepted" or "rejected"
+      if (req.body.status !== "accepted" && req.body.status !== "rejected") {
+        return res.status(400).json({ message: "Status must be 'accepted' or 'rejected'" });
+      }
+      
+      const updatedRequest = await storage.updatePurchaseRequest(requestId, req.body);
+      return res.status(200).json(updatedRequest);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating purchase request" });
+    }
+  });
+  
+  app.put('/api/purchase-requests/:id/buyer', isBuyerAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const buyerId = req.session.buyerId as number;
+      
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: "Invalid request ID" });
+      }
+      
+      const request = await storage.getPurchaseRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Purchase request not found" });
+      }
+      
+      // Check if request is from this buyer
+      if (request.buyerId !== buyerId) {
+        return res.status(403).json({ message: "Unauthorized access to this request" });
+      }
+      
+      // Buyer can only update some fields (e.g., payment status, notes)
+      const allowedFields = ["paymentStatus", "notes", "paymentMethod"];
+      const filteredBody: Record<string, any> = Object.keys(req.body)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = req.body[key];
+          return obj;
+        }, {} as Record<string, any>);
+      
+      if (Object.keys(filteredBody).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      // If payment status is "completed", also update the request status
+      if (filteredBody.paymentStatus === "completed") {
+        filteredBody.status = "completed";
+      }
+      
+      const updatedRequest = await storage.updatePurchaseRequest(requestId, filteredBody);
+      return res.status(200).json(updatedRequest);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating purchase request" });
     }
   });
 

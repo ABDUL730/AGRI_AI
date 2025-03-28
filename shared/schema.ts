@@ -59,6 +59,28 @@ export interface IStorage {
   getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]>;
   getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined>;
   createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory>;
+  
+  // Buyer operations
+  getBuyer(id: number): Promise<Buyer | undefined>;
+  getBuyerByUsername(username: string): Promise<Buyer | undefined>;
+  createBuyer(buyer: InsertBuyer): Promise<Buyer>;
+  updateBuyer(id: number, buyer: Partial<Buyer>): Promise<Buyer | undefined>;
+  
+  // Crop Listing operations
+  getCropListings(): Promise<CropListing[]>;
+  getCropListingsByFarmerId(farmerId: number): Promise<CropListing[]>;
+  getCropListing(id: number): Promise<CropListing | undefined>;
+  createCropListing(listing: InsertCropListing): Promise<CropListing>;
+  updateCropListing(id: number, listing: Partial<CropListing>): Promise<CropListing | undefined>;
+  deleteCropListing(id: number): Promise<void>;
+  
+  // Purchase Request operations
+  getPurchaseRequests(): Promise<PurchaseRequest[]>;
+  getPurchaseRequestsByBuyerId(buyerId: number): Promise<PurchaseRequest[]>;
+  getPurchaseRequestsByFarmerId(farmerId: number): Promise<PurchaseRequest[]>;
+  getPurchaseRequest(id: number): Promise<PurchaseRequest | undefined>;
+  createPurchaseRequest(request: InsertPurchaseRequest): Promise<PurchaseRequest>;
+  updatePurchaseRequest(id: number, request: Partial<PurchaseRequest>): Promise<PurchaseRequest | undefined>;
 }
 
 // User/Farmer Schema
@@ -386,3 +408,117 @@ export type InsertIrrigationSchedule = z.infer<typeof insertIrrigationScheduleSc
 
 export type IrrigationHistory = typeof irrigationHistory.$inferSelect;
 export type InsertIrrigationHistory = z.infer<typeof insertIrrigationHistorySchema>;
+
+// Buyer Schema
+export const buyers = pgTable("buyers", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  fullName: text("full_name").notNull(),
+  companyName: text("company_name"),
+  businessType: text("business_type").notNull(), // "Retailer", "Wholesaler", "Processor", "Exporter"
+  location: text("location").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  email: text("email").notNull(),
+  preferredLanguage: text("preferred_language").default("english"),
+  verificationStatus: text("verification_status").default("pending"), // "pending", "verified", "rejected"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBuyerSchema = createInsertSchema(buyers).pick({
+  username: true,
+  password: true,
+  fullName: true,
+  companyName: true,
+  businessType: true,
+  location: true,
+  phoneNumber: true,
+  email: true,
+  preferredLanguage: true,
+});
+
+// Crop Listing Schema
+export const cropListings = pgTable("crop_listings", {
+  id: serial("id").primaryKey(),
+  farmerId: integer("farmer_id").notNull(),
+  title: text("title").notNull(),
+  cropName: text("crop_name").notNull(),
+  cropVariety: text("crop_variety").notNull(),
+  quantity: real("quantity").notNull(), // in quintals/tons
+  pricePerUnit: integer("price_per_unit").notNull(), // in currency (e.g. rupees)
+  unit: text("unit").notNull(), // "kg", "quintal", "ton"
+  qualityGrade: text("quality_grade").notNull(), // "A", "B", "C" or "Premium", "Standard", "Economy"
+  harvestDate: timestamp("harvest_date").notNull(),
+  availableUntil: timestamp("available_until").notNull(),
+  description: text("description"),
+  location: text("location").notNull(),
+  isOrganic: boolean("is_organic").default(false),
+  certifications: json("certifications").$type<string[]>(), // ["Organic", "GAP", "Fair Trade"]
+  images: json("images").$type<string[]>(), // URLs to images of the crop
+  status: text("status").default("available"), // "available", "pending_sale", "sold"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCropListingSchema = createInsertSchema(cropListings).pick({
+  farmerId: true,
+  title: true,
+  cropName: true,
+  cropVariety: true,
+  quantity: true,
+  pricePerUnit: true,
+  unit: true,
+  qualityGrade: true,
+  harvestDate: true,
+  availableUntil: true,
+  description: true,
+  location: true,
+  isOrganic: true,
+  certifications: true,
+  images: true,
+});
+
+// Purchase Request Schema
+export const purchaseRequests = pgTable("purchase_requests", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id").notNull(),
+  buyerId: integer("buyer_id").notNull(),
+  farmerId: integer("farmer_id").notNull(),
+  requestedQuantity: real("requested_quantity").notNull(), // in same unit as listing
+  bidPricePerUnit: integer("bid_price_per_unit"), // Optional bid price if different from listing
+  message: text("message"),
+  status: text("status").default("pending"), // "pending", "accepted", "rejected", "completed"
+  requestDate: timestamp("request_date").defaultNow(),
+  responseDate: timestamp("response_date"),
+  completedDate: timestamp("completed_date"),
+  paymentStatus: text("payment_status").default("pending"), // "pending", "completed", "refunded"
+  transportationMethod: text("transportation_method"), // "buyer_pickup", "seller_delivery", "third_party"
+  deliveryDate: timestamp("delivery_date"),
+  contactNumber: text("contact_number"),
+  notes: text("notes"),
+});
+
+export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).pick({
+  listingId: true,
+  buyerId: true,
+  farmerId: true,
+  requestedQuantity: true,
+  bidPricePerUnit: true,
+  message: true,
+  transportationMethod: true,
+  deliveryDate: true,
+  contactNumber: true,
+  notes: true,
+});
+
+// Export Buyer types
+export type Buyer = typeof buyers.$inferSelect;
+export type InsertBuyer = z.infer<typeof insertBuyerSchema>;
+
+// Export CropListing types
+export type CropListing = typeof cropListings.$inferSelect;
+export type InsertCropListing = z.infer<typeof insertCropListingSchema>;
+
+// Export PurchaseRequest types
+export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
+export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
