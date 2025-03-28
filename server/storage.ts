@@ -6,7 +6,10 @@ import {
   FinancialAssistance, InsertFinancialAssistance,
   MarketData, InsertMarketData,
   ChatMessage, InsertChatMessage,
-  Notification, InsertNotification
+  Notification, InsertNotification,
+  IrrigationSystem, InsertIrrigationSystem,
+  IrrigationSchedule, InsertIrrigationSchedule,
+  IrrigationHistory, InsertIrrigationHistory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -46,6 +49,25 @@ export interface IStorage {
   getNotifications(): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  
+  // Irrigation operations
+  getIrrigationSystemsByFieldId(fieldId: number): Promise<IrrigationSystem[]>;
+  getIrrigationSystem(id: number): Promise<IrrigationSystem | undefined>;
+  createIrrigationSystem(system: InsertIrrigationSystem): Promise<IrrigationSystem>;
+  updateIrrigationSystem(id: number, system: Partial<IrrigationSystem>): Promise<IrrigationSystem | undefined>;
+  deleteIrrigationSystem(id: number): Promise<void>;
+  
+  // Irrigation schedule operations
+  getIrrigationSchedules(systemId: number): Promise<IrrigationSchedule[]>;
+  getIrrigationSchedule(id: number): Promise<IrrigationSchedule | undefined>;
+  createIrrigationSchedule(schedule: InsertIrrigationSchedule): Promise<IrrigationSchedule>;
+  updateIrrigationSchedule(id: number, schedule: Partial<IrrigationSchedule>): Promise<IrrigationSchedule | undefined>;
+  deleteIrrigationSchedule(id: number): Promise<void>;
+  
+  // Irrigation history operations
+  getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]>;
+  getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined>;
+  createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory>;
 }
 
 export class MemStorage implements IStorage {
@@ -57,6 +79,9 @@ export class MemStorage implements IStorage {
   private marketData: Map<number, MarketData>;
   private chatMessages: Map<number, ChatMessage>;
   private notifications: Map<number, Notification>;
+  private irrigationSystems: Map<number, IrrigationSystem>;
+  private irrigationSchedules: Map<number, IrrigationSchedule>;
+  private irrigationHistory: Map<number, IrrigationHistory>;
   
   private farmerId: number;
   private fieldId: number;
@@ -65,6 +90,9 @@ export class MemStorage implements IStorage {
   private marketDataId: number;
   private chatMessageId: number;
   private notificationId: number;
+  private irrigationSystemId: number;
+  private irrigationScheduleId: number;
+  private irrigationHistoryId: number;
 
   constructor() {
     this.farmers = new Map();
@@ -75,6 +103,9 @@ export class MemStorage implements IStorage {
     this.marketData = new Map();
     this.chatMessages = new Map();
     this.notifications = new Map();
+    this.irrigationSystems = new Map();
+    this.irrigationSchedules = new Map();
+    this.irrigationHistory = new Map();
     
     this.farmerId = 1;
     this.fieldId = 1;
@@ -83,6 +114,9 @@ export class MemStorage implements IStorage {
     this.marketDataId = 1;
     this.chatMessageId = 1;
     this.notificationId = 1;
+    this.irrigationSystemId = 1;
+    this.irrigationScheduleId = 1;
+    this.irrigationHistoryId = 1;
     
     // Initialize with sample data
     this.initializeData();
@@ -431,6 +465,121 @@ export class MemStorage implements IStorage {
     this.notifications.set(id, updatedNotification);
     return updatedNotification;
   }
+
+  // Irrigation operations
+  async getIrrigationSystemsByFieldId(fieldId: number): Promise<IrrigationSystem[]> {
+    return Array.from(this.irrigationSystems.values()).filter(
+      (system) => system.fieldId === fieldId
+    );
+  }
+
+  async getIrrigationSystem(id: number): Promise<IrrigationSystem | undefined> {
+    return this.irrigationSystems.get(id);
+  }
+
+  async createIrrigationSystem(system: InsertIrrigationSystem): Promise<IrrigationSystem> {
+    const id = this.irrigationSystemId++;
+    const newSystem: IrrigationSystem = { 
+      ...system, 
+      id,
+      installationDate: system.installationDate || new Date(),
+      lastMaintenanceDate: system.lastMaintenanceDate || new Date(new Date().setMonth(new Date().getMonth() - 2)),
+      nextMaintenanceDate: system.nextMaintenanceDate || new Date(new Date().setMonth(new Date().getMonth() + 4)),
+      sensorData: system.sensorData || {
+        moisture: 65,
+        temperature: 28,
+        humidity: 70,
+        batteryLevel: 92
+      }
+    };
+    this.irrigationSystems.set(id, newSystem);
+    return newSystem;
+  }
+
+  async updateIrrigationSystem(id: number, system: Partial<IrrigationSystem>): Promise<IrrigationSystem | undefined> {
+    const existingSystem = this.irrigationSystems.get(id);
+    if (!existingSystem) return undefined;
+    
+    const updatedSystem = { ...existingSystem, ...system };
+    this.irrigationSystems.set(id, updatedSystem);
+    return updatedSystem;
+  }
+
+  async deleteIrrigationSystem(id: number): Promise<void> {
+    this.irrigationSystems.delete(id);
+  }
+
+  // Irrigation schedule operations
+  async getIrrigationSchedules(systemId: number): Promise<IrrigationSchedule[]> {
+    return Array.from(this.irrigationSchedules.values()).filter(
+      (schedule) => schedule.systemId === systemId
+    );
+  }
+
+  async getIrrigationSchedule(id: number): Promise<IrrigationSchedule | undefined> {
+    return this.irrigationSchedules.get(id);
+  }
+
+  async createIrrigationSchedule(schedule: InsertIrrigationSchedule): Promise<IrrigationSchedule> {
+    const id = this.irrigationScheduleId++;
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const newSchedule: IrrigationSchedule = {
+      ...schedule,
+      id,
+      createdAt: new Date(),
+      lastRunTime: schedule.lastRunTime || null,
+      nextRunTime: schedule.nextRunTime || tomorrow
+    };
+    this.irrigationSchedules.set(id, newSchedule);
+    return newSchedule;
+  }
+
+  async updateIrrigationSchedule(id: number, schedule: Partial<IrrigationSchedule>): Promise<IrrigationSchedule | undefined> {
+    const existingSchedule = this.irrigationSchedules.get(id);
+    if (!existingSchedule) return undefined;
+    
+    const updatedSchedule = { ...existingSchedule, ...schedule };
+    this.irrigationSchedules.set(id, updatedSchedule);
+    return updatedSchedule;
+  }
+
+  async deleteIrrigationSchedule(id: number): Promise<void> {
+    this.irrigationSchedules.delete(id);
+  }
+
+  // Irrigation history operations
+  async getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]> {
+    return Array.from(this.irrigationHistory.values())
+      .filter((history) => history.fieldId === fieldId)
+      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  }
+
+  async getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined> {
+    return this.irrigationHistory.get(id);
+  }
+
+  async createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory> {
+    const id = this.irrigationHistoryId++;
+    const endTime = history.endTime || new Date(new Date(history.startTime).getTime() + history.duration * 60000);
+    
+    const newHistory: IrrigationHistory = {
+      ...history,
+      id,
+      endTime,
+      status: history.status || "Completed",
+      weatherConditions: history.weatherConditions || {
+        temperature: 30,
+        humidity: 65,
+        precipitation: 0,
+        windSpeed: 8
+      }
+    };
+    this.irrigationHistory.set(id, newHistory);
+    return newHistory;
+  }
 }
 
 // Import the PostgreSQL storage implementation
@@ -489,4 +638,23 @@ export const storage: IStorage = {
   getNotifications: (...args) => activeStorage.getNotifications(...args),
   createNotification: (...args) => activeStorage.createNotification(...args),
   markNotificationAsRead: (...args) => activeStorage.markNotificationAsRead(...args),
+  
+  // Irrigation operations
+  getIrrigationSystemsByFieldId: (...args) => activeStorage.getIrrigationSystemsByFieldId(...args),
+  getIrrigationSystem: (...args) => activeStorage.getIrrigationSystem(...args),
+  createIrrigationSystem: (...args) => activeStorage.createIrrigationSystem(...args),
+  updateIrrigationSystem: (...args) => activeStorage.updateIrrigationSystem(...args),
+  deleteIrrigationSystem: (...args) => activeStorage.deleteIrrigationSystem(...args),
+  
+  // Irrigation schedule operations
+  getIrrigationSchedules: (...args) => activeStorage.getIrrigationSchedules(...args),
+  getIrrigationSchedule: (...args) => activeStorage.getIrrigationSchedule(...args),
+  createIrrigationSchedule: (...args) => activeStorage.createIrrigationSchedule(...args),
+  updateIrrigationSchedule: (...args) => activeStorage.updateIrrigationSchedule(...args),
+  deleteIrrigationSchedule: (...args) => activeStorage.deleteIrrigationSchedule(...args),
+  
+  // Irrigation history operations
+  getIrrigationHistory: (...args) => activeStorage.getIrrigationHistory(...args),
+  getIrrigationHistoryById: (...args) => activeStorage.getIrrigationHistoryById(...args),
+  createIrrigationHistory: (...args) => activeStorage.createIrrigationHistory(...args),
 };

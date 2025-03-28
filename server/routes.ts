@@ -6,7 +6,10 @@ import {
   insertFarmerSchema, 
   insertFieldSchema,
   insertChatMessageSchema,
-  insertCropRecommendationSchema
+  insertCropRecommendationSchema,
+  insertIrrigationSystemSchema,
+  insertIrrigationScheduleSchema,
+  insertIrrigationHistorySchema
 } from "@shared/schema";
 import { getAIChatResponse, getCropRecommendations, getSubsidyRecommendations } from "./services/openai";
 
@@ -435,6 +438,364 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in subsidy recommendations:", error);
       return res.status(500).json({ message: "Failed to generate subsidy recommendations" });
+    }
+  });
+  
+  // Irrigation System Routes
+  app.get('/api/irrigation-systems/field/:fieldId', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const fieldId = parseInt(req.params.fieldId);
+      
+      if (isNaN(fieldId)) {
+        return res.status(400).json({ message: "Invalid field ID" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(fieldId);
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      if (field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this field" });
+      }
+      
+      const irrigationSystems = await storage.getIrrigationSystemsByFieldId(fieldId);
+      return res.status(200).json(irrigationSystems);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching irrigation systems" });
+    }
+  });
+  
+  app.get('/api/irrigation-systems/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const systemId = parseInt(req.params.id);
+      
+      if (isNaN(systemId)) {
+        return res.status(400).json({ message: "Invalid irrigation system ID" });
+      }
+      
+      const system = await storage.getIrrigationSystem(systemId);
+      
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation system" });
+      }
+      
+      return res.status(200).json(system);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching irrigation system" });
+    }
+  });
+  
+  app.post('/api/irrigation-systems', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { fieldId } = req.body;
+      
+      if (!fieldId) {
+        return res.status(400).json({ message: "Field ID is required" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(fieldId);
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      if (field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this field" });
+      }
+      
+      const validationResult = insertIrrigationSystemSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid irrigation system data", 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      const newSystem = await storage.createIrrigationSystem(validationResult.data);
+      return res.status(201).json(newSystem);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error creating irrigation system" });
+    }
+  });
+  
+  app.put('/api/irrigation-systems/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const systemId = parseInt(req.params.id);
+      
+      if (isNaN(systemId)) {
+        return res.status(400).json({ message: "Invalid irrigation system ID" });
+      }
+      
+      const system = await storage.getIrrigationSystem(systemId);
+      
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation system" });
+      }
+      
+      // Update system
+      const updatedSystem = await storage.updateIrrigationSystem(systemId, req.body);
+      return res.status(200).json(updatedSystem);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating irrigation system" });
+    }
+  });
+  
+  app.delete('/api/irrigation-systems/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const systemId = parseInt(req.params.id);
+      
+      if (isNaN(systemId)) {
+        return res.status(400).json({ message: "Invalid irrigation system ID" });
+      }
+      
+      const system = await storage.getIrrigationSystem(systemId);
+      
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation system" });
+      }
+      
+      // Delete system
+      await storage.deleteIrrigationSystem(systemId);
+      return res.status(204).send();
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error deleting irrigation system" });
+    }
+  });
+  
+  // Irrigation Schedule Routes
+  app.get('/api/irrigation-schedules/system/:systemId', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const systemId = parseInt(req.params.systemId);
+      
+      if (isNaN(systemId)) {
+        return res.status(400).json({ message: "Invalid irrigation system ID" });
+      }
+      
+      const system = await storage.getIrrigationSystem(systemId);
+      
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation system" });
+      }
+      
+      const schedules = await storage.getIrrigationSchedules(systemId);
+      return res.status(200).json(schedules);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching irrigation schedules" });
+    }
+  });
+  
+  app.post('/api/irrigation-schedules', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { systemId } = req.body;
+      
+      if (!systemId) {
+        return res.status(400).json({ message: "System ID is required" });
+      }
+      
+      const system = await storage.getIrrigationSystem(systemId);
+      
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation system" });
+      }
+      
+      const validationResult = insertIrrigationScheduleSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid irrigation schedule data", 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      const newSchedule = await storage.createIrrigationSchedule(validationResult.data);
+      return res.status(201).json(newSchedule);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error creating irrigation schedule" });
+    }
+  });
+  
+  app.put('/api/irrigation-schedules/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const scheduleId = parseInt(req.params.id);
+      
+      if (isNaN(scheduleId)) {
+        return res.status(400).json({ message: "Invalid irrigation schedule ID" });
+      }
+      
+      const schedule = await storage.getIrrigationSchedule(scheduleId);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Irrigation schedule not found" });
+      }
+      
+      // Verify system access
+      const system = await storage.getIrrigationSystem(schedule.systemId);
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation schedule" });
+      }
+      
+      // Update schedule
+      const updatedSchedule = await storage.updateIrrigationSchedule(scheduleId, req.body);
+      return res.status(200).json(updatedSchedule);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating irrigation schedule" });
+    }
+  });
+  
+  app.delete('/api/irrigation-schedules/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const scheduleId = parseInt(req.params.id);
+      
+      if (isNaN(scheduleId)) {
+        return res.status(400).json({ message: "Invalid irrigation schedule ID" });
+      }
+      
+      const schedule = await storage.getIrrigationSchedule(scheduleId);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Irrigation schedule not found" });
+      }
+      
+      // Verify system access
+      const system = await storage.getIrrigationSystem(schedule.systemId);
+      if (!system) {
+        return res.status(404).json({ message: "Irrigation system not found" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(system.fieldId);
+      if (!field || field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this irrigation schedule" });
+      }
+      
+      // Delete schedule
+      await storage.deleteIrrigationSchedule(scheduleId);
+      return res.status(204).send();
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error deleting irrigation schedule" });
+    }
+  });
+  
+  // Irrigation History Routes
+  app.get('/api/irrigation-history/field/:fieldId', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const fieldId = parseInt(req.params.fieldId);
+      
+      if (isNaN(fieldId)) {
+        return res.status(400).json({ message: "Invalid field ID" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(fieldId);
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      if (field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this field" });
+      }
+      
+      const history = await storage.getIrrigationHistory(fieldId);
+      return res.status(200).json(history);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching irrigation history" });
+    }
+  });
+  
+  app.post('/api/irrigation-history', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { fieldId, systemId } = req.body;
+      
+      if (!fieldId || !systemId) {
+        return res.status(400).json({ message: "Field ID and System ID are required" });
+      }
+      
+      // Verify field belongs to the authenticated farmer
+      const field = await storage.getField(fieldId);
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      if (field.farmerId !== req.session.farmerId) {
+        return res.status(403).json({ message: "You don't have access to this field" });
+      }
+      
+      // Verify system exists and belongs to the field
+      const system = await storage.getIrrigationSystem(systemId);
+      if (!system || system.fieldId !== fieldId) {
+        return res.status(404).json({ message: "Irrigation system not found for this field" });
+      }
+      
+      const validationResult = insertIrrigationHistorySchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid irrigation history data", 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      const newHistory = await storage.createIrrigationHistory(validationResult.data);
+      
+      // Update the field's lastIrrigationDate
+      await storage.updateField(fieldId, { 
+        lastIrrigationDate: newHistory.startTime,
+        irrigationStatus: "Recently irrigated"
+      });
+      
+      return res.status(201).json(newHistory);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error recording irrigation history" });
     }
   });
   

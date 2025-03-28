@@ -40,6 +40,25 @@ export interface IStorage {
   getNotifications(): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  
+  // Irrigation operations
+  getIrrigationSystemsByFieldId(fieldId: number): Promise<IrrigationSystem[]>;
+  getIrrigationSystem(id: number): Promise<IrrigationSystem | undefined>;
+  createIrrigationSystem(system: InsertIrrigationSystem): Promise<IrrigationSystem>;
+  updateIrrigationSystem(id: number, system: Partial<IrrigationSystem>): Promise<IrrigationSystem | undefined>;
+  deleteIrrigationSystem(id: number): Promise<void>;
+  
+  // Irrigation schedule operations
+  getIrrigationSchedules(systemId: number): Promise<IrrigationSchedule[]>;
+  getIrrigationSchedule(id: number): Promise<IrrigationSchedule | undefined>;
+  createIrrigationSchedule(schedule: InsertIrrigationSchedule): Promise<IrrigationSchedule>;
+  updateIrrigationSchedule(id: number, schedule: Partial<IrrigationSchedule>): Promise<IrrigationSchedule | undefined>;
+  deleteIrrigationSchedule(id: number): Promise<void>;
+  
+  // Irrigation history operations
+  getIrrigationHistory(fieldId: number): Promise<IrrigationHistory[]>;
+  getIrrigationHistoryById(id: number): Promise<IrrigationHistory | undefined>;
+  createIrrigationHistory(history: InsertIrrigationHistory): Promise<IrrigationHistory>;
 }
 
 // User/Farmer Schema
@@ -223,6 +242,117 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
   type: true,
 });
 
+// Irrigation System Schema
+export const irrigationSystems = pgTable("irrigation_systems", {
+  id: serial("id").primaryKey(),
+  fieldId: integer("field_id").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "Drip", "Sprinkler", "Flood", "Center Pivot", "Smart System"
+  installationDate: timestamp("installation_date").defaultNow(),
+  status: text("status").notNull(), // "Active", "Inactive", "Maintenance", "Offline"
+  waterSource: text("water_source").notNull(), // "Well", "Canal", "Pond", "Rainwater Harvesting", "River"
+  coverageArea: real("coverage_area").notNull(), // in acres
+  efficiency: integer("efficiency"), // Percentage of water used effectively (0-100)
+  lastMaintenanceDate: timestamp("last_maintenance_date"),
+  nextMaintenanceDate: timestamp("next_maintenance_date"),
+  description: text("description"),
+  isSmartEnabled: boolean("is_smart_enabled").default(false),
+  sensorData: json("sensor_data").$type<{
+    moisture?: number;
+    temperature?: number;
+    humidity?: number;
+    batteryLevel?: number;
+  }>(),
+});
+
+export const insertIrrigationSystemSchema = createInsertSchema(irrigationSystems).pick({
+  fieldId: true,
+  name: true,
+  type: true,
+  installationDate: true,
+  status: true,
+  waterSource: true,
+  coverageArea: true,
+  efficiency: true,
+  lastMaintenanceDate: true,
+  nextMaintenanceDate: true,
+  description: true,
+  isSmartEnabled: true,
+  sensorData: true,
+});
+
+// Irrigation Schedule Schema
+export const irrigationSchedules = pgTable("irrigation_schedules", {
+  id: serial("id").primaryKey(),
+  systemId: integer("system_id").notNull(),
+  name: text("name").notNull(),
+  frequency: text("frequency").notNull(), // "Daily", "Weekly", "Custom"
+  startTime: timestamp("start_time").notNull(),
+  duration: integer("duration").notNull(), // in minutes
+  daysOfWeek: json("days_of_week").$type<string[]>(), // ["Monday", "Wednesday", "Friday"]
+  isActive: boolean("is_active").default(true),
+  waterAmount: real("water_amount"), // in liters or gallons
+  status: text("status").notNull(), // "Scheduled", "Running", "Completed", "Skipped", "Failed"
+  adjustForWeather: boolean("adjust_for_weather").default(false), // Adjust based on weather forecast
+  createdAt: timestamp("created_at").defaultNow(),
+  lastRunTime: timestamp("last_run_time"),
+  nextRunTime: timestamp("next_run_time"),
+});
+
+export const insertIrrigationScheduleSchema = createInsertSchema(irrigationSchedules).pick({
+  systemId: true,
+  name: true,
+  frequency: true,
+  startTime: true,
+  duration: true,
+  daysOfWeek: true,
+  isActive: true,
+  waterAmount: true,
+  status: true,
+  adjustForWeather: true,
+  lastRunTime: true,
+  nextRunTime: true,
+});
+
+// Irrigation History Schema
+export const irrigationHistory = pgTable("irrigation_history", {
+  id: serial("id").primaryKey(),
+  fieldId: integer("field_id").notNull(),
+  systemId: integer("system_id").notNull(),
+  scheduleId: integer("schedule_id"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // in minutes
+  waterUsed: real("water_used"), // in liters or gallons
+  status: text("status").notNull(), // "Completed", "Interrupted", "Failed", "Manual"
+  initiatedBy: text("initiated_by").notNull(), // "System", "User", "Weather Alert"
+  notes: text("notes"),
+  soilMoistureBefore: integer("soil_moisture_before"), // Percentage
+  soilMoistureAfter: integer("soil_moisture_after"), // Percentage
+  weatherConditions: json("weather_conditions").$type<{
+    temperature?: number;
+    humidity?: number;
+    precipitation?: number;
+    windSpeed?: number;
+  }>(),
+});
+
+export const insertIrrigationHistorySchema = createInsertSchema(irrigationHistory).pick({
+  fieldId: true,
+  systemId: true,
+  scheduleId: true,
+  startTime: true,
+  endTime: true,
+  duration: true,
+  waterUsed: true,
+  status: true,
+  initiatedBy: true,
+  notes: true,
+  soilMoistureBefore: true,
+  soilMoistureAfter: true,
+  weatherConditions: true,
+});
+
 // Export types
 export type Farmer = typeof farmers.$inferSelect;
 export type InsertFarmer = z.infer<typeof insertFarmerSchema>;
@@ -247,3 +377,12 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type IrrigationSystem = typeof irrigationSystems.$inferSelect;
+export type InsertIrrigationSystem = z.infer<typeof insertIrrigationSystemSchema>;
+
+export type IrrigationSchedule = typeof irrigationSchedules.$inferSelect;
+export type InsertIrrigationSchedule = z.infer<typeof insertIrrigationScheduleSchema>;
+
+export type IrrigationHistory = typeof irrigationHistory.$inferSelect;
+export type InsertIrrigationHistory = z.infer<typeof insertIrrigationHistorySchema>;
