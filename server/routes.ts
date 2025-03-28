@@ -1423,6 +1423,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get list of buyers (for farmer's messages page)
+  app.get('/api/buyers', async (req: Request, res: Response) => {
+    try {
+      const buyers = await storage.getBuyers();
+      // Return only necessary information (without passwords and other sensitive data)
+      const publicBuyerData = buyers.map(({ id, fullName, location, phoneNumber, username, companyName, businessType }) => ({
+        id,
+        fullName,
+        location,
+        phoneNumber,
+        username,
+        companyName,
+        businessType,
+      }));
+      return res.status(200).json(publicBuyerData);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error fetching buyers list" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

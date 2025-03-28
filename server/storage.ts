@@ -79,6 +79,7 @@ export interface IStorage {
   getBuyerByUsername(username: string): Promise<Buyer | undefined>;
   createBuyer(buyer: InsertBuyer): Promise<Buyer>;
   updateBuyer(id: number, buyer: Partial<Buyer>): Promise<Buyer | undefined>;
+  getBuyers(): Promise<Buyer[]>;
   
   // Crop Listing operations
   getCropListings(): Promise<CropListing[]>;
@@ -713,6 +714,10 @@ export class MemStorage implements IStorage {
     this.buyers.set(id, updatedBuyer);
     return updatedBuyer;
   }
+  
+  async getBuyers(): Promise<Buyer[]> {
+    return Array.from(this.buyers.values());
+  }
 
   // Crop Listing operations
   async getCropListings(): Promise<CropListing[]> {
@@ -968,6 +973,7 @@ export const storage: IStorage = {
   getBuyerByUsername: (...args) => memStorage.getBuyerByUsername(...args),
   createBuyer: (...args) => memStorage.createBuyer(...args),
   updateBuyer: (...args) => memStorage.updateBuyer(...args),
+  getBuyers: () => memStorage.getBuyers(),
   
   // Crop Listing operations
   getCropListings: (...args) => memStorage.getCropListings(...args),

@@ -514,6 +514,10 @@ export class PostgresStorage implements IStorage {
   async updateBuyer(id: number, buyer: Partial<Buyer>): Promise<Buyer | undefined> {
     return undefined;
   }
+  
+  async getBuyers(): Promise<Buyer[]> {
+    return [];
+  }
 
   // Crop Listing operations
   async getCropListings(): Promise<CropListing[]> {

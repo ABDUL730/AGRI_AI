@@ -29,6 +29,7 @@ export function Sidebar({ className }: SidebarProps) {
     { path: "/irrigation", icon: "water_drop", label: t("Irrigation") },
     { path: "/loans", icon: "paid", label: t("Loans & Subsidies") },
     { path: "/market", icon: "shopping_cart", label: t("Market Connect") },
+    { path: "/messages", icon: "message", label: t("Messages") },
     { path: "/assistant", icon: "forum", label: t("AI Assistant") },
     { path: "/settings", icon: "settings", label: t("Settings") },
   ];
