@@ -27,17 +27,23 @@ const ProtectedRoute = ({ component: Component, requiresBuyer = false, ...rest }
   const { isAuthenticated: isFarmerAuthenticated, isLoading: isFarmerLoading } = useAuth();
   const { isAuthenticated: isBuyerAuthenticated, isLoading: isBuyerLoading } = useBuyer();
   const [, navigate] = useLocation();
-
-  // Determine authentication status based on requiresBuyer flag
-  const isAuthenticated = requiresBuyer ? isBuyerAuthenticated : isFarmerAuthenticated;
-  const isLoading = requiresBuyer ? isBuyerLoading : isFarmerLoading;
-
-  // useEffect ensures this runs after render to avoid React warnings
+  
+  // For the market route, allow both farmer and buyer access
+  const isMarketRoute = window.location.pathname === "/market";
+  
+  // Determine authentication status based on requirements and route
+  const isAuthenticated = isMarketRoute 
+    ? (isFarmerAuthenticated || isBuyerAuthenticated)
+    : (requiresBuyer ? isBuyerAuthenticated : isFarmerAuthenticated);
+  
+  const isLoading = isFarmerLoading || isBuyerLoading;
+  
+  // Use a one-time effect for redirect
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/auth");
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
     return (
@@ -63,8 +69,9 @@ const PublicRoute = ({ component: Component, ...rest }: any) => {
   const isAuthenticated = isFarmerAuthenticated || isBuyerAuthenticated;
   const isLoading = isFarmerLoading || isBuyerLoading;
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - use a full dependency array
   React.useEffect(() => {
+    // Only redirect on auth page when authenticated and not loading
     if (!isLoading && isAuthenticated && window.location.pathname === "/auth") {
       if (isFarmerAuthenticated) {
         navigate("/");
@@ -82,9 +89,6 @@ function Router() {
     <Switch>
       <Route path="/auth">
         {() => <PublicRoute component={AuthPage} />}
-      </Route>
-      <Route path="/">
-        {() => <ProtectedRoute component={Dashboard} />}
       </Route>
       <Route path="/crop-management">
         {() => <ProtectedRoute component={CropManagement} />}
@@ -110,7 +114,10 @@ function Router() {
       <Route path="/profile">
         {() => <ProtectedRoute component={Profile} />}
       </Route>
-      <Route path="/:rest*">
+      <Route path="/">
+        {() => <ProtectedRoute component={Dashboard} />}
+      </Route>
+      <Route>
         {() => <PublicRoute component={NotFound} />}
       </Route>
     </Switch>

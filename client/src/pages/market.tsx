@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { useBuyer } from "@/hooks/use-buyer";
 import { useCallback } from "react";
 
 // Types for API responses
@@ -90,6 +91,7 @@ export default function Market() {
   const [isBuyerDialogOpen, setIsBuyerDialogOpen] = useState(false);
   const [isNewListingDialogOpen, setIsNewListingDialogOpen] = useState(false);
   const { user: farmer } = useAuth();
+  const { buyer } = useBuyer();
 
   // Fetch all crop listings
   const { data: listings, isLoading: isLoadingListings } = useQuery<CropListing[]>({
@@ -179,7 +181,7 @@ export default function Market() {
       requestedQuantity: 0,
       bidPricePerUnit: 0,
       message: "",
-      contactName: farmer?.fullName || "",
+      contactName: buyer?.fullName || farmer?.fullName || "",
       contactNumber: "",
     },
   });
@@ -229,9 +231,11 @@ export default function Market() {
         <TabsContent value="listings" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-heading font-semibold text-gray-900">{t("Available Crops")}</h2>
-            <Button onClick={() => setIsNewListingDialogOpen(true)}>
-              {t("Add New Listing")}
-            </Button>
+            {farmer && (
+              <Button onClick={() => setIsNewListingDialogOpen(true)}>
+                {t("Add New Listing")}
+              </Button>
+            )}
           </div>
           
           {isLoadingListings ? (
@@ -245,9 +249,16 @@ export default function Market() {
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg font-heading">{listing.title}</CardTitle>
-                      <Badge variant={listing.farmerId === farmer?.id ? "outline" : "default"}>
-                        {listing.farmerId === farmer?.id ? t("Your Listing") : t("Available")}
-                      </Badge>
+                      {farmer && (
+                        <Badge variant={listing.farmerId === farmer?.id ? "outline" : "default"}>
+                          {listing.farmerId === farmer?.id ? t("Your Listing") : t("Available")}
+                        </Badge>
+                      )}
+                      {buyer && (
+                        <Badge variant="default">
+                          {t("Available")}
+                        </Badge>
+                      )}
                     </div>
                     <CardDescription>
                       {listing.cropName} {listing.cropVariety && `(${listing.cropVariety})`}
@@ -278,13 +289,13 @@ export default function Market() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    {listing.farmerId !== farmer?.id ? (
-                      <Button className="w-full" onClick={() => openBuyerDialog(listing)}>
-                        {t("Inquire to Buy")}
-                      </Button>
-                    ) : (
+                    {farmer && listing.farmerId === farmer.id ? (
                       <Button variant="outline" className="w-full" disabled>
                         {t("Your Listing")}
+                      </Button>
+                    ) : (
+                      <Button className="w-full" onClick={() => openBuyerDialog(listing)}>
+                        {t("Inquire to Buy")}
                       </Button>
                     )}
                   </CardFooter>
@@ -296,10 +307,15 @@ export default function Market() {
               <div className="text-center">
                 <span className="material-icons text-primary text-4xl">inventory</span>
                 <h2 className="mt-2 text-lg font-medium text-gray-900">{t("No Crop Listings Available")}</h2>
-                <p className="mt-1 text-gray-500">{t("Be the first to add a crop listing to the marketplace")}</p>
-                <Button className="mt-4" onClick={() => setIsNewListingDialogOpen(true)}>
-                  {t("Add New Listing")}
-                </Button>
+                <p className="mt-1 text-gray-500">{t("No crops are currently listed in the marketplace")}</p>
+                {farmer && (
+                  <>
+                    <p className="mt-1 text-gray-500">{t("Be the first to add a crop listing")}</p>
+                    <Button className="mt-4" onClick={() => setIsNewListingDialogOpen(true)}>
+                      {t("Add New Listing")}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           )}
