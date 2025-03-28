@@ -29,7 +29,25 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    // Handle URL parameter replacement - if queryKey has more than one element
+    let url = queryKey[0] as string;
+    
+    // If the URL contains a parameter placeholder (e.g., '/api/resource/:id')
+    // and there's a second element in the queryKey, replace the placeholder
+    if (queryKey.length > 1 && queryKey[1] !== undefined && queryKey[1] !== null) {
+      // Check if the URL has a path parameter (indicated by ":")
+      if (url.includes('/:')) {
+        // Extract the parameter name
+        const paramName = url.split('/:')[1];
+        // Replace the placeholder with the actual value
+        url = url.replace(`/:${paramName}`, `/${queryKey[1]}`);
+      } else {
+        // If no path parameter, append the ID to the URL
+        url = `${url}/${queryKey[1]}`;
+      }
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 

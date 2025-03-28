@@ -95,9 +95,13 @@ export function IrrigationSystemForm({ fieldId, onSuccess, onCancel }: Irrigatio
 
   // Form submission handler
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // Convert installation date string to ISO format
+    const installDate = new Date(values.installationDate);
+    
     // Handle smart system data
     const dataToSubmit = {
       ...values,
+      installationDate: installDate.toISOString(),
       sensorData: isSmartEnabled ? {
         moisture: null,
         temperature: null,

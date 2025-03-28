@@ -65,7 +65,7 @@ export default function Irrigation() {
     error: systemsError,
     refetch: refetchSystems
   } = useQuery<IrrigationSystem[]>({
-    queryKey: ['/api/irrigation-systems/field', selectedFieldId],
+    queryKey: ['/api/irrigation-systems/field/:fieldId', selectedFieldId],
     enabled: !!selectedFieldId,
   });
 
@@ -76,7 +76,7 @@ export default function Irrigation() {
     error: schedulesError,
     refetch: refetchSchedules
   } = useQuery<IrrigationSchedule[]>({
-    queryKey: ['/api/irrigation-schedules/system', selectedSystem?.id],
+    queryKey: ['/api/irrigation-schedules/system/:systemId', selectedSystem?.id],
     enabled: !!selectedSystem,
   });
 
@@ -87,7 +87,7 @@ export default function Irrigation() {
     error: historyError,
     refetch: refetchHistory
   } = useQuery<IrrigationHistory[]>({
-    queryKey: ['/api/irrigation-history/field', selectedFieldId],
+    queryKey: ['/api/irrigation-history/field/:fieldId', selectedFieldId],
     enabled: !!selectedFieldId,
   });
 

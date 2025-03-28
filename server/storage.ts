@@ -639,22 +639,22 @@ export const storage: IStorage = {
   createNotification: (...args) => activeStorage.createNotification(...args),
   markNotificationAsRead: (...args) => activeStorage.markNotificationAsRead(...args),
   
-  // Irrigation operations
-  getIrrigationSystemsByFieldId: (...args) => activeStorage.getIrrigationSystemsByFieldId(...args),
-  getIrrigationSystem: (...args) => activeStorage.getIrrigationSystem(...args),
-  createIrrigationSystem: (...args) => activeStorage.createIrrigationSystem(...args),
-  updateIrrigationSystem: (...args) => activeStorage.updateIrrigationSystem(...args),
-  deleteIrrigationSystem: (...args) => activeStorage.deleteIrrigationSystem(...args),
+  // Irrigation operations - always use memory storage for these features
+  getIrrigationSystemsByFieldId: (...args) => memStorage.getIrrigationSystemsByFieldId(...args),
+  getIrrigationSystem: (...args) => memStorage.getIrrigationSystem(...args),
+  createIrrigationSystem: (...args) => memStorage.createIrrigationSystem(...args),
+  updateIrrigationSystem: (...args) => memStorage.updateIrrigationSystem(...args),
+  deleteIrrigationSystem: (...args) => memStorage.deleteIrrigationSystem(...args),
   
-  // Irrigation schedule operations
-  getIrrigationSchedules: (...args) => activeStorage.getIrrigationSchedules(...args),
-  getIrrigationSchedule: (...args) => activeStorage.getIrrigationSchedule(...args),
-  createIrrigationSchedule: (...args) => activeStorage.createIrrigationSchedule(...args),
-  updateIrrigationSchedule: (...args) => activeStorage.updateIrrigationSchedule(...args),
-  deleteIrrigationSchedule: (...args) => activeStorage.deleteIrrigationSchedule(...args),
+  // Irrigation schedule operations - always use memory storage for these features
+  getIrrigationSchedules: (...args) => memStorage.getIrrigationSchedules(...args),
+  getIrrigationSchedule: (...args) => memStorage.getIrrigationSchedule(...args),
+  createIrrigationSchedule: (...args) => memStorage.createIrrigationSchedule(...args),
+  updateIrrigationSchedule: (...args) => memStorage.updateIrrigationSchedule(...args),
+  deleteIrrigationSchedule: (...args) => memStorage.deleteIrrigationSchedule(...args),
   
-  // Irrigation history operations
-  getIrrigationHistory: (...args) => activeStorage.getIrrigationHistory(...args),
-  getIrrigationHistoryById: (...args) => activeStorage.getIrrigationHistoryById(...args),
-  createIrrigationHistory: (...args) => activeStorage.createIrrigationHistory(...args),
+  // Irrigation history operations - always use memory storage for these features
+  getIrrigationHistory: (...args) => memStorage.getIrrigationHistory(...args),
+  getIrrigationHistoryById: (...args) => memStorage.getIrrigationHistoryById(...args),
+  createIrrigationHistory: (...args) => memStorage.createIrrigationHistory(...args),
 };
