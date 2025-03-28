@@ -242,6 +242,8 @@ export default function AuthPage() {
         title: t("Login Successful"),
         description: t("Welcome to AgriMarket!"),
       });
+      // Redirect to market page after successful login
+      navigate("/market");
     } catch (error: any) {
       toast({
         title: t("Login Failed"),
