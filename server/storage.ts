@@ -349,8 +349,8 @@ export class MemStorage implements IStorage {
     this.createNotification(notification2);
     this.createNotification(notification3);
     
-    // Create sample buyer
-    const sampleBuyer: InsertBuyer = {
+    // Create sample buyers
+    const sampleBuyer1: InsertBuyer = {
       username: "rajesh.agro",
       password: "password123",
       fullName: "Rajesh Agrawal",
@@ -361,7 +361,21 @@ export class MemStorage implements IStorage {
       businessType: "Wholesale",
       preferredLanguage: "english"
     };
-    this.createBuyer(sampleBuyer);
+    this.createBuyer(sampleBuyer1);
+    
+    // Create test buyer account
+    const testBuyer: InsertBuyer = {
+      username: "buyer1",
+      password: "password123",
+      fullName: "Test Buyer",
+      location: "Delhi, India",
+      phoneNumber: "+919876543210",
+      email: "buyer1@test.com",
+      companyName: "Test Buyers Inc.",
+      businessType: "Retailer",
+      preferredLanguage: "english"
+    };
+    this.createBuyer(testBuyer);
     
     // Create sample crop listing
     const sampleListing: InsertCropListing = {
