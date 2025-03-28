@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 interface NavigationItem {
   path: string;
@@ -14,6 +15,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
   const { language, setLanguage, t } = useLanguage();
+  const { user, logout, isLoading } = useAuth();
 
   const navigationItems: NavigationItem[] = [
     { path: "/", icon: "dashboard", label: t("Dashboard") },
@@ -25,7 +27,9 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(e.target.value);
+    const value = e.target.value;
+    // Type safety - cast as any since we know these values align with our Language type
+    setLanguage(value as any);
   };
 
   return (
@@ -83,10 +87,17 @@ export function Sidebar({ className }: SidebarProps) {
               <span className="material-icons text-sm">person</span>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium">Rajesh Kumar</p>
-              <p className="text-xs">Maharashtra</p>
+              <p className="text-sm font-medium">{user?.fullName || '...'}</p>
+              <p className="text-xs">{user?.location || '...'}</p>
             </div>
-            <button type="button" className="ml-auto">
+            <button 
+              type="button" 
+              className="ml-auto hover:bg-primary-dark p-1.5 rounded-full transition-colors" 
+              onClick={logout}
+              disabled={isLoading}
+              aria-label={t("Logout")}
+              title={t("Logout")}
+            >
               <span className="material-icons">logout</span>
             </button>
           </div>
