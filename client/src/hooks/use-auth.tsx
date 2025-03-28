@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userData = await loginUser(username, password);
       setUser(userData);
-      setLocation("/dashboard");
+      setLocation("/"); // Redirecting to root which is mapped to Dashboard
     } catch (error) {
       throw error;
     } finally {

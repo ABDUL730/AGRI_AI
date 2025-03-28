@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/ui/sidebar";
 import MobileNav from "@/components/ui/mobile-nav";
+import TopNav from "@/components/ui/top-nav";
 import { useLanguage } from "@/hooks/use-language";
 import { LanguageSelector } from "@/components/ui/language-selector";
 
@@ -68,24 +69,16 @@ export function MainLayout({ children }: MainLayoutProps) {
               
               {/* Right side icons */}
               <div className="flex items-center space-x-4">
-                {/* Notification bell */}
-                <button type="button" className="relative p-1 text-gray-700 hover:text-primary focus:outline-none">
-                  <span className="material-icons">notifications</span>
-                  <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-xs text-white font-semibold">3</span>
-                </button>
-                
-                {/* Language selector */}
-                <LanguageSelector />
-                
                 {/* Help */}
                 <button type="button" className="p-1 text-gray-700 hover:text-primary focus:outline-none">
                   <span className="material-icons">help_outline</span>
                 </button>
                 
-                {/* User menu (mobile only) */}
-                <button type="button" className="md:hidden p-1 text-gray-700 hover:text-primary focus:outline-none">
-                  <span className="material-icons">account_circle</span>
-                </button>
+                {/* Language selector */}
+                <LanguageSelector />
+                
+                {/* User menu with notifications and account dropdown */}
+                <TopNav />
               </div>
             </div>
           </div>
