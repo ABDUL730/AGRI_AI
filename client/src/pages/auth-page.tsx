@@ -124,7 +124,7 @@ type ResetRequestFormValues = z.infer<typeof resetRequestSchema>;
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function AuthPage() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
   
@@ -156,11 +156,11 @@ export default function AuthPage() {
   // This useEffect will handle the redirection
   useEffect(() => {
     if (isFarmerAuthenticated) {
-      setLocation("/");
+      navigate("/");
     } else if (isBuyerAuthenticated) {
-      setLocation("/market");
+      navigate("/market");
     }
-  }, [isFarmerAuthenticated, isBuyerAuthenticated, setLocation]);
+  }, [isFarmerAuthenticated, isBuyerAuthenticated, navigate]);
 
   // Farmer login form
   const farmerLoginForm = useForm<LoginFormValues>({
