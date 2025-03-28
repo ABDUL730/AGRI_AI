@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Farmer } from "@shared/schema";
-import { loginUser, logoutUser, registerUser, getCurrentUser } from "@/lib/api";
+import { 
+  loginUser, 
+  logoutUser, 
+  registerUser, 
+  getCurrentUser,
+  requestPasswordReset,
+  resetPassword
+} from "@/lib/api";
 
 interface AuthContextType {
   user: Farmer | null;
@@ -10,6 +17,8 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (userData: any) => Promise<void>;
+  requestPasswordReset: (username: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,13 +86,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Request password reset function
+  async function handleRequestPasswordReset(username: string) {
+    setIsLoading(true);
+    try {
+      await requestPasswordReset(username);
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Reset password function
+  async function handleResetPassword(token: string, newPassword: string) {
+    setIsLoading(true);
+    try {
+      await resetPassword(token, newPassword);
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const value = {
     user,
     isLoading,
     isAuthenticated: !!user,
     login,
     logout,
-    register
+    register,
+    requestPasswordReset: handleRequestPasswordReset,
+    resetPassword: handleResetPassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

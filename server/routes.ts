@@ -45,6 +45,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Password reset request
+  app.post('/api/auth/reset-password-request', async (req: Request, res: Response) => {
+    try {
+      const { username } = req.body;
+      
+      if (!username) {
+        return res.status(400).json({ message: "Username is required" });
+      }
+      
+      const farmer = await storage.getFarmerByUsername(username);
+      
+      if (!farmer) {
+        // Still return success to prevent username enumeration
+        return res.status(200).json({ message: "If the account exists, a reset token has been sent" });
+      }
+      
+      // In a real app, generate a secure token and send an email
+      // For demo purposes, we'll use a simple token (the username reversed)
+      const resetToken = username.split('').reverse().join('');
+      
+      // Store this token with the user (in a real app, we'd store a hashed version with an expiry)
+      // For this demo, we'll just log it
+      console.log(`Reset token for ${username}: ${resetToken}`);
+      
+      return res.status(200).json({ message: "If the account exists, a reset token has been sent" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error processing reset request" });
+    }
+  });
+  
+  // Password reset
+  app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+      
+      // In a real app, validate the token against stored tokens
+      // For this demo, we'll reverse the token to get the username (token is username reversed)
+      const username = token.split('').reverse().join('');
+      
+      const farmer = await storage.getFarmerByUsername(username);
+      
+      if (!farmer) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      
+      // Update the password - in a real app, you'd hash the password
+      const updatedFarmer = await storage.updateFarmer(farmer.id, { password: newPassword });
+      
+      if (!updatedFarmer) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+      
+      return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error resetting password" });
+    }
+  });
+  
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
       const validationResult = insertFarmerSchema.safeParse(req.body);

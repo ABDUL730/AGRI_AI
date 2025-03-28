@@ -36,6 +36,14 @@ export async function getCurrentUser(): Promise<Farmer> {
   return response.json();
 }
 
+export async function requestPasswordReset(username: string): Promise<void> {
+  await apiRequest("POST", "/api/auth/reset-password-request", { username });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await apiRequest("POST", "/api/auth/reset-password", { token, newPassword });
+}
+
 // Fields API
 export async function getFields(): Promise<Field[]> {
   const response = await apiRequest("GET", "/api/fields", undefined);
