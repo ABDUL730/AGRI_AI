@@ -95,22 +95,40 @@ export function IrrigationSystemForm({ fieldId, onSuccess, onCancel }: Irrigatio
 
   // Form submission handler
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Convert installation date string to ISO format
-    const installDate = new Date(values.installationDate);
-    
-    // Handle smart system data
-    const dataToSubmit = {
-      ...values,
-      installationDate: installDate.toISOString(),
-      sensorData: isSmartEnabled ? {
-        moisture: null,
-        temperature: null,
-        humidity: null,
-        batteryLevel: 100,
-      } : null,
-    };
-    
-    mutation.mutate(dataToSubmit);
+    try {
+      // Convert installation date string to ISO format - proper validation
+      const dateStr = values.installationDate;
+      const [year, month, day] = dateStr.split("-").map(Number);
+      
+      if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        throw new Error("Invalid date format");
+      }
+      
+      // JavaScript months are 0-based, so subtract 1 from month
+      const installDate = new Date(year, month - 1, day);
+      
+      // Handle smart system data
+      const dataToSubmit = {
+        ...values,
+        installationDate: installDate.toISOString(),
+        sensorData: isSmartEnabled ? {
+          moisture: null,
+          temperature: null,
+          humidity: null,
+          batteryLevel: 100,
+        } : null,
+      };
+      
+      console.log("Submitting irrigation system:", dataToSubmit);
+      mutation.mutate(dataToSubmit);
+    } catch (error) {
+      console.error("Date conversion error:", error);
+      toast({
+        title: t("Error"),
+        description: t("Invalid date format. Please use YYYY-MM-DD format."),
+        variant: "destructive",
+      });
+    }
   };
 
   return (

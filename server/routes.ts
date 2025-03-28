@@ -513,9 +513,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have access to this field" });
       }
       
+      // Log the received data for debugging
+      console.log("Received irrigation system data:", req.body);
+      
+      // Check if installationDate is properly formatted
+      if (req.body.installationDate) {
+        try {
+          // Validate the date format
+          const date = new Date(req.body.installationDate);
+          if (isNaN(date.getTime())) {
+            return res.status(400).json({ 
+              message: "Invalid irrigation system data", 
+              errors: [{ path: ["installationDate"], message: "Invalid date format" }]
+            });
+          }
+        } catch (e) {
+          return res.status(400).json({ 
+            message: "Invalid irrigation system data", 
+            errors: [{ path: ["installationDate"], message: "Invalid date format" }]
+          });
+        }
+      }
+      
       const validationResult = insertIrrigationSystemSchema.safeParse(req.body);
       
       if (!validationResult.success) {
+        console.error("Validation errors:", validationResult.error.errors);
         return res.status(400).json({ 
           message: "Invalid irrigation system data", 
           errors: validationResult.error.errors 
