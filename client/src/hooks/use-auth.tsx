@@ -1,132 +1,192 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useLocation } from "wouter";
-import { Farmer } from "@shared/schema";
-import { 
-  loginUser, 
-  logoutUser, 
-  registerUser, 
-  getCurrentUser,
-  requestPasswordReset,
-  resetPassword
-} from "@/lib/api";
+import { createContext, ReactNode, useContext } from "react";
+import {
+  useQuery,
+  useMutation,
+  UseMutationResult,
+} from "@tanstack/react-query";
+import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-interface AuthContextType {
+// Farmer type
+export type Farmer = {
+  id: number;
+  username: string;
+  fullName: string;
+  location: string;
+  phoneNumber: string;
+  preferredLanguage: string | null;
+};
+
+type AuthContextType = {
   user: Farmer | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (userData: any) => Promise<void>;
-  requestPasswordReset: (username: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-}
+  isLoading: boolean;
+  error: Error | null;
+  loginMutation: UseMutationResult<Farmer, Error, LoginData>;
+  registerMutation: UseMutationResult<Farmer, Error, RegisterData>;
+  logoutMutation: UseMutationResult<void, Error, void>;
+  resetPasswordRequestMutation: UseMutationResult<void, Error, ResetRequestData>;
+  resetPasswordMutation: UseMutationResult<void, Error, ResetPasswordData>;
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+type LoginData = {
+  username: string;
+  password: string;
+};
+
+type RegisterData = {
+  username: string;
+  password: string;
+  fullName: string;
+  location: string;
+  phoneNumber: string;
+  preferredLanguage?: string;
+};
+
+type ResetRequestData = {
+  username: string;
+};
+
+type ResetPasswordData = {
+  token: string;
+  newPassword: string;
+};
+
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Farmer | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [, setLocation] = useLocation();
-
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("Error checking authentication status:", error);
-        // Clear any potential stale user data
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
-
-  // Login function
-  async function login(username: string, password: string) {
-    setIsLoading(true);
-    try {
-      const userData = await loginUser(username, password);
-      setUser(userData);
-      setLocation("/"); // Redirecting to root which is mapped to Dashboard
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Logout function
-  async function logout() {
-    setIsLoading(true);
-    try {
-      await logoutUser();
-      setUser(null);
-      setLocation("/login");
-    } catch (error) {
-      console.error("Error during logout:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Register function
-  async function register(userData: any) {
-    setIsLoading(true);
-    try {
-      await registerUser(userData);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Request password reset function
-  async function handleRequestPasswordReset(username: string) {
-    setIsLoading(true);
-    try {
-      await requestPasswordReset(username);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Reset password function
-  async function handleResetPassword(token: string, newPassword: string) {
-    setIsLoading(true);
-    try {
-      await resetPassword(token, newPassword);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const value = {
-    user,
+  const { toast } = useToast();
+  const {
+    data: user,
+    error,
     isLoading,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    register,
-    requestPasswordReset: handleRequestPasswordReset,
-    resetPassword: handleResetPassword
-  };
+  } = useQuery<Farmer | null, Error>({
+    queryKey: ["/api/auth/check"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: LoginData) => {
+      const res = await apiRequest("POST", "/api/auth/login", credentials);
+      return await res.json();
+    },
+    onSuccess: (user: Farmer) => {
+      queryClient.setQueryData(["/api/auth/check"], user);
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.fullName}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: "Invalid username or password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (userData: RegisterData) => {
+      const res = await apiRequest("POST", "/api/auth/register", userData);
+      return await res.json();
+    },
+    onSuccess: (user: Farmer) => {
+      queryClient.setQueryData(["/api/auth/check"], user);
+      toast({
+        title: "Registration successful",
+        description: `Welcome, ${user.fullName}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: "Username may already exist, or there was an error with the provided information",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/check"], null);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordRequestMutation = useMutation({
+    mutationFn: async (data: ResetRequestData) => {
+      await apiRequest("POST", "/api/auth/reset-password-request", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset requested",
+        description: "If an account with that username exists, you will receive a reset token.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request failed",
+        description: "Could not request password reset. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordData) => {
+      await apiRequest("POST", "/api/auth/reset-password", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset successful",
+        description: "Your password has been updated. Please log in with your new password.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reset failed",
+        description: "Invalid or expired token. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user: user || null,
+        isAuthenticated: !!user,
+        isLoading,
+        error,
+        loginMutation,
+        registerMutation,
+        logoutMutation,
+        resetPasswordRequestMutation,
+        resetPasswordMutation,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
