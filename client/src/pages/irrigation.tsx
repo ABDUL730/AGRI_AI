@@ -2,7 +2,19 @@ import { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/main-layout";
 import { useLanguage } from "@/hooks/use-language";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Droplets, CalendarClock, History, Plus, Settings2, Activity, BarChart3 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { 
+  Loader2, 
+  Droplets, 
+  CalendarClock, 
+  History, 
+  Plus, 
+  Settings2, 
+  Activity, 
+  BarChart3,
+  Cpu,
+  GaugeCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +52,7 @@ import { Field, IrrigationSystem, IrrigationSchedule, IrrigationHistory } from "
 import { IrrigationSystemForm } from "@/components/irrigation/irrigation-system-form";
 import { IrrigationScheduleForm } from "@/components/irrigation/irrigation-schedule-form";
 import { IrrigationHistoryForm } from "@/components/irrigation/irrigation-history-form";
+import { IotDashboard } from "@/components/irrigation/iot-dashboard";
 
 export default function Irrigation() {
   const { t } = useLanguage();
@@ -258,7 +271,7 @@ export default function Irrigation() {
         </div>
       ) : (
         <Tabs defaultValue="systems" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="systems">
               <Droplets className="h-4 w-4 mr-2" />
               {t("Systems")}
@@ -266,6 +279,10 @@ export default function Irrigation() {
             <TabsTrigger value="schedules" disabled={!selectedSystem}>
               <CalendarClock className="h-4 w-4 mr-2" />
               {t("Schedules")}
+            </TabsTrigger>
+            <TabsTrigger value="smart" disabled={!selectedSystem || !selectedSystem.isSmartEnabled}>
+              <Cpu className="h-4 w-4 mr-2" />
+              {t("Smart IoT")}
             </TabsTrigger>
             <TabsTrigger value="history">
               <History className="h-4 w-4 mr-2" />
@@ -340,7 +357,7 @@ export default function Irrigation() {
                         </div>
                       )}
                     </CardContent>
-                    <CardFooter className="border-t pt-3 flex justify-between">
+                    <CardFooter className="border-t pt-3 flex flex-wrap gap-2">
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -349,6 +366,7 @@ export default function Irrigation() {
                         <Settings2 className="h-4 w-4 mr-2" />
                         {t("Manage")}
                       </Button>
+                      
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -357,6 +375,21 @@ export default function Irrigation() {
                         <Plus className="h-4 w-4 mr-2" />
                         {t("Schedule")}
                       </Button>
+                      
+                      {system.isSmartEnabled && (
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          className="ml-auto"
+                          onClick={() => {
+                            setSelectedSystem(system);
+                            document.querySelector('[data-value="smart"]')?.click();
+                          }}
+                        >
+                          <Cpu className="h-4 w-4 mr-2" />
+                          {t("IoT Dashboard")}
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
@@ -455,6 +488,56 @@ export default function Irrigation() {
               </div>
             ) : (
               <NoSchedulesMessage />
+            )}
+          </TabsContent>
+          
+          {/* Smart IoT Tab */}
+          <TabsContent value="smart" className="mt-4">
+            {!selectedSystem ? (
+              <div className="bg-gray-50 rounded-lg p-6 text-center">
+                {t("Please select an irrigation system first")}
+              </div>
+            ) : !selectedSystem.isSmartEnabled ? (
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="flex flex-col items-center justify-center">
+                  <Cpu className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium">{t("Smart IoT Not Enabled")}</h3>
+                  <p className="text-sm text-gray-500 mb-4 text-center">
+                    {t("This irrigation system does not have smart IoT features enabled.")}
+                  </p>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await apiRequest(
+                          "PUT", 
+                          `/api/irrigation-systems/${selectedSystem.id}`,
+                          { 
+                            isSmartEnabled: true,
+                            sensorData: {
+                              moisture: 50,
+                              temperature: 25,
+                              humidity: 60,
+                              batteryLevel: 100,
+                              lastUpdated: new Date().toISOString()
+                            }
+                          }
+                        );
+                        refetchSystems();
+                      } catch (error) {
+                        console.error("Failed to enable smart features:", error);
+                      }
+                    }}
+                  >
+                    <Cpu className="h-4 w-4 mr-2" />
+                    {t("Enable Smart Features")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <IotDashboard 
+                system={selectedSystem} 
+                onUpdate={refetchSystems} 
+              />
             )}
           </TabsContent>
           

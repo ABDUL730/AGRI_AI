@@ -516,17 +516,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the received data for debugging
       console.log("Received irrigation system data:", req.body);
       
+      // Convert date string to Date object before validation
+      let processedData = { ...req.body };
+      
       // Check if installationDate is properly formatted
-      if (req.body.installationDate) {
+      if (processedData.installationDate && typeof processedData.installationDate === 'string') {
         try {
-          // Validate the date format
-          const date = new Date(req.body.installationDate);
+          // Parse the date string
+          const date = new Date(processedData.installationDate);
+          
           if (isNaN(date.getTime())) {
             return res.status(400).json({ 
               message: "Invalid irrigation system data", 
               errors: [{ path: ["installationDate"], message: "Invalid date format" }]
             });
           }
+          
+          // Replace string with actual date object
+          processedData.installationDate = date;
         } catch (e) {
           return res.status(400).json({ 
             message: "Invalid irrigation system data", 
@@ -535,7 +542,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const validationResult = insertIrrigationSystemSchema.safeParse(req.body);
+      console.log("Processed irrigation system data:", processedData);
+      
+      const validationResult = insertIrrigationSystemSchema.safeParse(processedData);
       
       if (!validationResult.success) {
         console.error("Validation errors:", validationResult.error.errors);
