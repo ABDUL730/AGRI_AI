@@ -15,7 +15,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
   const { language, setLanguage, t } = useLanguage();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logoutMutation } = useAuth();
 
   const navigationItems: NavigationItem[] = [
     { path: "/", icon: "dashboard", label: t("Dashboard") },
@@ -24,12 +24,17 @@ export function Sidebar({ className }: SidebarProps) {
     { path: "/loans", icon: "paid", label: t("Loans & Subsidies") },
     { path: "/market", icon: "shopping_cart", label: t("Market Connect") },
     { path: "/assistant", icon: "forum", label: t("AI Assistant") },
+    { path: "/settings", icon: "settings", label: t("Settings") },
   ];
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     // Type safety - cast as any since we know these values align with our Language type
     setLanguage(value as any);
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   return (
@@ -93,8 +98,8 @@ export function Sidebar({ className }: SidebarProps) {
             <button 
               type="button" 
               className="ml-auto hover:bg-primary-dark p-1.5 rounded-full transition-colors" 
-              onClick={logout}
-              disabled={isLoading}
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
               aria-label={t("Logout")}
               title={t("Logout")}
             >

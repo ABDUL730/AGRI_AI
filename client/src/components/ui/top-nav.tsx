@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 
 interface TopNavProps {
   className?: string;
@@ -8,12 +9,12 @@ interface TopNavProps {
 
 export function TopNav({ className }: TopNavProps) {
   const { t } = useLanguage();
-  const { logout, user } = useAuth();
+  const { logoutMutation, user } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = () => {
     setShowUserMenu(false);
-    logout();
+    logoutMutation.mutate();
   };
 
   return (
@@ -48,17 +49,18 @@ export function TopNav({ className }: TopNavProps) {
                 {user?.username || t("Username")}
               </p>
             </div>
-            <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
               <span className="material-icons text-sm mr-2 align-text-bottom">person</span>
               {t("Profile")}
-            </a>
-            <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            </Link>
+            <Link href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
               <span className="material-icons text-sm mr-2 align-text-bottom">settings</span>
               {t("Settings")}
-            </a>
+            </Link>
             <button 
               onClick={handleLogout}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              disabled={logoutMutation.isPending}
             >
               <span className="material-icons text-sm mr-2 align-text-bottom">logout</span>
               {t("Logout")}

@@ -10,6 +10,8 @@ import Loans from "@/pages/loans";
 import Market from "@/pages/market";
 import Assistant from "@/pages/assistant";
 import CropWizard from "@/pages/crop-wizard";
+import Settings from "@/pages/settings";
+import Profile from "@/pages/profile";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { BuyerProvider, useBuyer } from "@/hooks/use-buyer";
 
@@ -101,6 +103,12 @@ function Router() {
       </Route>
       <Route path="/crop-wizard">
         {() => <ProtectedRoute component={CropWizard} />}
+      </Route>
+      <Route path="/settings">
+        {() => <ProtectedRoute component={Settings} />}
+      </Route>
+      <Route path="/profile">
+        {() => <ProtectedRoute component={Profile} />}
       </Route>
       <Route path="/:rest*">
         {() => <PublicRoute component={NotFound} />}
