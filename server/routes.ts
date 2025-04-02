@@ -865,6 +865,18 @@ app.post('/api/notifications/thank-you', async (req: Request, res: Response) => 
       };
       
       await storage.createNotification(notification);
+
+      // Send SMS if phone number exists
+      if (farmer.phoneNumber) {
+        try {
+          await sendSMS(
+            farmer.phoneNumber,
+            "Thank you for accessing AGRI AI. We appreciate your trust in our platform."
+          );
+        } catch (smsError) {
+          console.error(`Failed to send SMS to farmer ${farmer.id}:`, smsError);
+        }
+      }
     }
 
     return res.status(200).json({ message: "Thank you notifications sent successfully" });
