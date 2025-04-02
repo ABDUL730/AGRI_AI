@@ -847,6 +847,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error(error);
       return res.status(500).json({ message: "Error recording irrigation history" });
     }
+
+
+// Send thank you notification to all farmers
+app.post('/api/notifications/thank-you', async (req: Request, res: Response) => {
+  try {
+    const farmers = await storage.getFarmers();
+    
+    for (const farmer of farmers) {
+      // Create notification for each farmer
+      const notification = {
+        title: "Thank You from AGRI AI",
+        description: "Thank you for accessing AGRI AI. We appreciate your trust in our platform.",
+        type: "info",
+        farmerId: farmer.id,
+        isRead: false
+      };
+      
+      await storage.createNotification(notification);
+    }
+
+    return res.status(200).json({ message: "Thank you notifications sent successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error sending thank you notifications" });
+  }
+});
+
+
   });
 
   // Notification routes
