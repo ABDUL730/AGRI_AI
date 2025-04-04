@@ -6,27 +6,26 @@ import * as schema from '../../shared/schema';
 // Configure neon to use WebSockets
 neonConfig.webSocketConstructor = ws;
 
-// Use DATABASE_URL environment variable if available
-let connectionString = process.env.DATABASE_URL;
-
-// Otherwise construct from individual parameters
-if (!connectionString && process.env.PGHOST) {
-  connectionString = `postgres://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`;
-}
+// Use DATABASE_URL environment variable
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.warn('Database connection configuration is missing. Please provide DATABASE_URL or individual PG* environment variables.');
+  console.warn('DATABASE_URL is not set. Please create a database from the Replit Database tool.');
 }
 
 // Create connection pool if connection string is available
 let pool: Pool | null = null;
 try {
   if (connectionString) {
+    // Replace non-pooler with pooler endpoint for better performance
+    const poolerUrl = connectionString.replace('.neon.tech', '-pooler.neon.tech');
     pool = new Pool({ 
-      connectionString,
+      connectionString: poolerUrl,
       ssl: {
         rejectUnauthorized: false
-      }
+      },
+      max: 10,
+      connectionTimeoutMillis: 5000
     });
   }
 } catch (error) {
