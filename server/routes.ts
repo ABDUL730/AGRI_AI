@@ -889,7 +889,38 @@ app.post('/api/notifications/thank-you', async (req: Request, res: Response) => 
 
   });
 
-  // Notification routes
+  // Weather alert notification
+app.post('/api/notifications/weather-alert', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { condition, advice, location } = req.body;
+
+    if (!condition || !advice || !location) {
+      return res.status(400).json({ message: "Missing required alert information" });
+    }
+
+    // Get farmers in the affected location
+    const farmers = await storage.getFarmersByLocation(location);
+    
+    // Send SMS to all farmers in the location
+    const phoneNumbers = farmers
+      .filter(farmer => farmer.phoneNumber)
+      .map(farmer => farmer.phoneNumber as string);
+
+    if (phoneNumbers.length > 0) {
+      await sendBulkSMS(phoneNumbers, "", {
+        templateName: "weatherAlert",
+        variables: { condition, advice }
+      });
+    }
+
+    return res.status(200).json({ message: "Weather alerts sent successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error sending weather alerts" });
+  }
+});
+
+// Notification routes
   app.get('/api/notifications', async (req: Request, res: Response) => {
     try {
       const notifications = await storage.getNotifications();
