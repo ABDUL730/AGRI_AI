@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+// the newest OpenAI model is "gpt-4" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Agricultural assistant chat function
@@ -10,7 +10,7 @@ export async function getAIChatResponse(
 ): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -47,7 +47,7 @@ export async function getCropRecommendations(
 }> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -64,7 +64,7 @@ export async function getCropRecommendations(
           - Season: ${seasonality}
           - Water Availability: ${waterAvailability}
           - Previous Crops: ${previousCrops}
-          
+
           Provide recommendations in JSON format with an array of recommended crops (each with name, confidence level from 0-1, and reasoning) and general advice.`
         }
       ],
@@ -72,7 +72,7 @@ export async function getCropRecommendations(
     });
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
-    
+
     return {
       recommendedCrops: result.recommendedCrops || [],
       generalAdvice: result.generalAdvice || "No specific advice available."
@@ -98,7 +98,7 @@ export async function getSubsidyRecommendations(
 }> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -116,7 +116,7 @@ export async function getSubsidyRecommendations(
           - Crops: ${farmerDetails.crops.join(', ')}
           - Income Level: ${farmerDetails.income}
           - Category: ${farmerDetails.category}
-          
+
           Provide recommendations in JSON format with an array of recommended subsidies (each with name, eligibility criteria, description, and application process) and general advice.`
         }
       ],
@@ -124,7 +124,7 @@ export async function getSubsidyRecommendations(
     });
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
-    
+
     return {
       recommendedSubsidies: result.recommendedSubsidies || [],
       generalAdvice: result.generalAdvice || "No specific advice available."
