@@ -17,15 +17,20 @@ if (!connectionString) {
 let pool: Pool | null = null;
 try {
   if (connectionString) {
-    // Replace non-pooler with pooler endpoint for better performance
-    const poolerUrl = connectionString.replace('.neon.tech', '-pooler.neon.tech');
     pool = new Pool({ 
-      connectionString: poolerUrl,
+      connectionString,
       ssl: {
         rejectUnauthorized: false
       },
       max: 10,
-      connectionTimeoutMillis: 5000
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 0
+    });
+    
+    // Test the connection
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client', err);
+      process.exit(-1);
     });
   }
 } catch (error) {
