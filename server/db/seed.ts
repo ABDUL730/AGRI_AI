@@ -45,8 +45,7 @@ export async function seedDatabase() {
   }
 
   try {
-    // Add test farmer account.  Assumes a 'storage' object exists with a 'createFarmer' method.
-    // This placement is chosen to add the test user before checking for existing data.
+    // Add test farmer account
     await storage.createFarmer({
       username: "abdul",
       password: "abdul123",
@@ -55,7 +54,6 @@ export async function seedDatabase() {
       phoneNumber: "+919876543210",
       preferredLanguage: "en"
     });
-
 
     // Check if farmers table is empty
     const existingFarmers = await safeDbOperation(
@@ -325,5 +323,3 @@ export async function seedDatabase() {
     throw error;
   }
 }
-
-export { seedDatabase };
