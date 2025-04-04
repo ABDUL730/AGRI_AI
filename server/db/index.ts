@@ -22,7 +22,12 @@ if (!connectionString) {
 let pool: Pool | null = null;
 try {
   if (connectionString) {
-    pool = new Pool({ connectionString });
+    pool = new Pool({ 
+      connectionString,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
   }
 } catch (error) {
   console.error('Failed to create database pool:', error);

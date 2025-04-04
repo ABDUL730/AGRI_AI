@@ -71,7 +71,7 @@ app.use(sessionMiddleware);
     const dbStatus = await checkDatabaseConnection();
     if (dbStatus.success) {
       log("Database connection successful", "express");
-      
+
       // Seed the database with initial data if needed
       await seedDatabase();
     } else {
@@ -118,11 +118,12 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    if (!res.headersSent) {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+    }
+    console.error(err);
   });
 
   // importantly only setup vite in development and after
