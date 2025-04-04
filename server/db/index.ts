@@ -1,3 +1,4 @@
+
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
@@ -19,9 +20,7 @@ try {
   if (connectionString) {
     pool = new Pool({ 
       connectionString,
-      ssl: {
-        rejectUnauthorized: false
-      },
+      ssl: true,
       max: 10,
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 0
