@@ -11,7 +11,7 @@ async function safeDbOperation<T>(operation: () => Promise<T>, fallback: T, oper
     log(`Database not available for operation: ${operationName}`, 'seed');
     return fallback;
   }
-  
+
   try {
     return await operation();
   } catch (error) {
@@ -26,7 +26,7 @@ async function safeInsert(operation: () => Promise<any>, operationName: string):
     log(`Database not available for operation: ${operationName}`, 'seed');
     return;
   }
-  
+
   try {
     await operation();
     log(`Successfully completed operation: ${operationName}`, 'seed');
@@ -36,7 +36,7 @@ async function safeInsert(operation: () => Promise<any>, operationName: string):
 }
 
 // Seed the database with initial data
-async function seedDatabase() {
+export async function seedDatabase() {
   log('Seeding database...', 'seed');
 
   if (!db) {
@@ -45,13 +45,25 @@ async function seedDatabase() {
   }
 
   try {
+    // Add test farmer account.  Assumes a 'storage' object exists with a 'createFarmer' method.
+    // This placement is chosen to add the test user before checking for existing data.
+    await storage.createFarmer({
+      username: "abdul",
+      password: "abdul123",
+      fullName: "Abdul Hameethu",
+      location: "Karnataka",
+      phoneNumber: "+919876543210",
+      preferredLanguage: "en"
+    });
+
+
     // Check if farmers table is empty
     const existingFarmers = await safeDbOperation(
       () => db!.select().from(farmers).limit(1),
       [],
       'check existing farmers'
     );
-    
+
     if (existingFarmers.length > 0) {
       log('Database already has data, skipping seed', 'seed');
       return;
@@ -313,8 +325,5 @@ async function seedDatabase() {
     throw error;
   }
 }
-
-// Execute seeding function
-// This will be imported from server/index.ts, no need to auto-execute
 
 export { seedDatabase };
